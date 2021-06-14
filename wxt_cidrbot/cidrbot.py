@@ -52,22 +52,24 @@ class cidrbot:
                     git_assigned_user = issue.assignee.login
                 except:
                     pass
+                    print("no assignee assigned")
 
                 self.send_message(git_reviewer, identifier, url, open_name)
 
-        elif indentifier == "pr":
-            for pr in open_type:  # Iterate through the given issues
+        elif identifier == "pr":
+            for PullRequest in open_type:  # Iterate through the given issues
                 open_name = PullRequest.title
                 issue_num = PullRequest.number
                 url = PullRequest.html_url
                 git_reviewer= PullRequest.user.login
-                try:
-                    git_assigned_user = PullRequest.assignee.login
-                except:
-                    pass
+                #try:
+                git_assigned_user = PullRequest.assignee.login
+                #except:
+                #    pass
 
                 # figure this out tomorrow, I can't figure out who is the reviewer here
                 # the try except is there bc it will error if it isn't assigned, make something more permenant for this eventually
+                # figure out the deal with "reviewers" versus "assignees"
 
                 self.send_message(git_reviewer, identifier, url, open_name)
 
