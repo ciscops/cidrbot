@@ -8,6 +8,7 @@ import base64
 
 # fill in imports that are necessary for webex api
 
+
 class cidrbot:
     def __init__(self):
         # Initialize logging
@@ -24,7 +25,8 @@ class cidrbot:
         if "GITHUB_ACCESS_TOKEN" in os.environ:
             git_token = os.getenv("GITHUB_ACCESS_TOKEN")
         else:
-            logging.error("Environment variable GITHUB_ACCESS_TOKEN must be set")
+            logging.error(
+                "Environment variable GITHUB_ACCESS_TOKEN must be set")
             sys.exit(1)
 
         # using an access token
@@ -39,46 +41,64 @@ class cidrbot:
         encoded_roomid = base64.b64encode(room_uri)
         encoded_roomid = encoded_roomid.decode("utf-8")
 
-    # End of what needs to go into the init def (use self when the main key functions are working fine)
-
-    def get_repo_issues(self):
-        repo = self.git_init.get_repo("ciscops/cidrbot") # Cycle through the different repos, make this work through an env var
-        open_issues = repo.get_issues(state='open') # Check if there are any open issues
-
-        self.msg_sender(open_issues, repo)
-
-    # This if block should be a function
-    def msg_sender(self, open_issues, repo):
-        if repo.open_issues > 0: # Easy way to differetiate between issues and no issues
-            for issue in open_issues: # Iterate through the given issues
-                issue_name = issue.title
+    def compile_notif(self, repo, open_type, identifier):
+        if identifier == "issue":
+            for issue in open_type:  # Iterate through the given issues
+                open_name = issue.title
                 issue_num = issue.number
                 url = issue.html_url
-                git_assigned_user = issue.user.login
-                git_reviewer = issue.assignee.login
-                print(git_reviewer)
-                print(git_assigned_user)
-                #print(issue.state) # Determine wether or the not the issue is open or closed
-                #print(issue.updated_at) # Use this for the time threshold to remind users in combination with aws cloudwatch timer
+                git_reviewer= issue.user.login
+                try:
+                    git_assigned_user = issue.assignee.login
+                except:
+                    pass
 
+                self.send_message(git_reviewer, identifier, url, open_name)
 
-                git_email = "{}@cisco.com".format(git_reviewer) # Format the git user name into an email to search webex for a user id
+        elif indentifier == "pr":
+            for pr in open_type:  # Iterate through the given issues
+                open_name = PullRequest.title
+                issue_num = PullRequest.number
+                url = PullRequest.html_url
+                git_reviewer= PullRequest.user.login
+                try:
+                    git_assigned_user = PullRequest.assignee.login
+                except:
+                    pass
 
-                # All the code below should be it's own function
+                # figure this out tomorrow, I can't figure out who is the reviewer here
+                # the try except is there bc it will error if it isn't assigned, make something more permenant for this eventually
 
-                for i in self.Api.people.list(git_email): # Easiest way to do this, its a generator container so this will always look ugly
-                    i = i.to_dict()
-                    user_name = i["firstName"]
-                    user_email = i["emails"]
-                    user_id = i["id"]
+                self.send_message(git_reviewer, identifier, url, open_name)
 
-                message = f"Hey <@personId:{user_id}|{user_name}>, you currently have an open issue which needs reviewing \n\n {issue_name}: {url}" # Make message
-                print(message)
-                #sender = Api.messages.create(encoded_roomid, markdown=message) # Send message to room
+    def send_message(self, reviewer, identifier, url, open_name):
+        git_email = "{}@cisco.com".format(reviewer)
+        for i in self.Api.people.list(git_email):
+            i = i.to_dict()
+            user_name = i["firstName"]
+            user_email = i["emails"]
+            user_id = i["id"]
+
+        if identifier == "issue":
+            message = f"Hey <@personId:{user_id}|{user_name}>, you currently have an open issue which needs reviewing \n\n {open_name}: {url}"
+            print(message)
+            # sender = Api.messages.create(encoded_roomid, markdown=message) # Send message to room
+
+        elif identifier == "pr":
+            message = f"Hey <@personId:{user_id}|{user_name}>, you currently have an open pull request which needs reviewing \n\n {open_name}: {url}"
+            print(message)
+            # sender = Api.messages.create(encoded_roomid, markdown=message) # Send message to room
+
+    def scan_repos(self):
+        envvar_for_repos = {"ciscops/cidrbot"} # Decide what to do with the env var for storing multiple repos
+        for repository in envvar_for_repos:
+            repo = self.git_init.get_repo(repository)
+            open_issues = repo.get_issues(state='open')
+            open_prs = repo.get_pulls(state='open')
+            if repo.open_issues > 0:
+                self.compile_notif(repo, open_issues, "issue")
+            if len(list(open_prs)) > 0:
+                self.compile_notif(repo, open_prs, "pr")
 
     def run_script(self):
-        self.get_repo_issues()
-
-
-    #write something about there being a case where the email doesnt exists
-    #if so tag a mod or someone in the space to contact the git user listed
+        self.scan_repos()
