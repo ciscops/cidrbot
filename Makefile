@@ -1,10 +1,10 @@
 # Makefile
 PYTHON_EXE = python3
 # PROJECT_NAME is used to create the virtualenv name
-PROJECT_NAME="example-project"
+PROJECT_NAME="cidrbot"
 TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
-PYDIRS="myproject"
+PYDIRS=wxt_cidrbot
 VENV = venv_$(PROJECT_NAME)
 VENV_BIN=$(VENV)/bin
 SRC_FILES := $(shell find $(PYDIRS) -name \*.py)
