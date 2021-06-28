@@ -1,0 +1,22 @@
+name: Cidrbot PY CI
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  ACTION_BUILD: true
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: pip install virtualenv
+    - run: make check

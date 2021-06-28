@@ -5,7 +5,6 @@ import base64
 from github import Github
 from webexteamssdk import WebexTeamsAPI
 
-
 # fill in imports that are necessary for webex api
 
 
@@ -28,12 +27,11 @@ class cidrbot:
         else:
             logging.error("Environment variable GIT_REPO_LIST must be set")
             sys.exit(1)
-    
+
         if "GITHUB_ACCESS_TOKEN" in os.environ:
             git_token = os.getenv("GITHUB_ACCESS_TOKEN")
         else:
-            logging.error(
-                "Environment variable GITHUB_ACCESS_TOKEN must be set")
+            logging.error("Environment variable GITHUB_ACCESS_TOKEN must be set")
             sys.exit(1)
 
         self.message = ""
