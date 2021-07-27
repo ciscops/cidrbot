@@ -1,2 +1,2 @@
-webexteamssdk
-pygithub
+webexteamssdk==1.6
+pygithub==1.55

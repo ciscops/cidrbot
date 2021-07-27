@@ -2,6 +2,7 @@
 PYTHON_EXE = python3
 # PROJECT_NAME is used to create the virtualenv name
 PROJECT_NAME="cidrbot"
+LAMBDA_FUNCTION_NAME="ppajersk-cidrbot"
 TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
 PYDIRS=wxt_cidrbot
@@ -93,5 +94,34 @@ docs-clean: ## Clean generated documentation
 	$(RM) $(GENERATED_DOC_SOURCES)
 	. $(VENV_BIN)/activate ; $(MAKE) -C docs clean
 
+clean-lambda:
+	$(RM) -rf lambda-packages
+	$(RM) lambda-packages.zip
+	$(RM) lambda-function.zip
+
+lambda-packages: $(VENV) requirements.txt ## Install all libraries
+	@[ -d $@ ] || mkdir -p $@/python # Create the libs dir if it doesn't exist
+	. $(VENV_BIN)/activate ; SODIUM_INSTALL=system pip install -r requirements.txt -t $@/python # We use -t to specify the destination of the
+
+	# packages, so that it doesn't install in your virtual env by default
+
+lambda-packages.zip: lambda-packages ## Output all code to zip file
+	cd lambda-packages && zip -r ../$@ * # zip all python source code into output.zip
+
+lambda-layer: lambda-packages.zip
+	aws lambda publish-layer-version \
+	--layer-name $(LAMBDA_FUNCTION_NAME)-layer \
+	--license-info "MIT" \
+	--zip-file fileb://lambda-packages.zip \
+	--compatible-runtimes python3.8
+
+lambda-function.zip: cidrbot_run.py ## Output all code to zip file
+	cp cidrbot_run.py lambda_function.py
+	zip -r $@ lambda_function.py $(PYDIRS) # zip all python source code into output.zip
+
+lambda-upload:lambda-function.zip ## Deploy all code to aws
+	aws lambda update-function-code \
+	--function-name $(LAMBDA_FUNCTION_NAME) \
+	--zip-file fileb://lambda-function.zip
 
 .PHONY: all clean $(VENV) test check format check-format pylint clean-docs-html clean-docs-markdown apidocs
