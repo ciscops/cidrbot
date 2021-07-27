@@ -118,6 +118,5 @@ class cidrbot:
 
         self.send_list_message()
 
-
     def msg_request(self, event):
         print(event)

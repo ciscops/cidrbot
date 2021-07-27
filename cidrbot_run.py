@@ -1,11 +1,12 @@
 import logging
 import datetime
 import json
-import socket
+#import socket
 from wxt_cidrbot.cidrbot import cidrbot
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+
 
 def lambda_handler(event, handle):
     logger.debug('new event received: %s', str(event))
