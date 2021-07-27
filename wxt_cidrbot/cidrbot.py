@@ -118,5 +118,6 @@ class cidrbot:
 
         self.send_list_message()
 
-    def run_script(self):
-        self.scan_repos()
+
+    def msg_request(self, event):
+        print(event)
