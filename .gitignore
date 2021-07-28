@@ -131,3 +131,9 @@ dmypy.json
 
 # MacOS stuff
 .DS_Store
+
+# other stuff
+lambda_function.py
+lambda-packages*
+.*.sw?
+.vscode/
