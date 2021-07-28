@@ -99,6 +99,10 @@ clean-lambda:
 	$(RM) lambda-packages.zip
 	$(RM) lambda-function.zip
 
+# create lambda-packages.zip using a docker image
+lambda-packages-docker: clean-lambda
+	docker run --rm --name lambda-builder --user $$(id -u) -v $$(pwd):/build lambda-builder:latest make lambda-packages.zip
+
 lambda-packages: $(VENV) requirements.txt ## Install all libraries
 	@[ -d $@ ] || mkdir -p $@/python # Create the libs dir if it doesn't exist
 	. $(VENV_BIN)/activate ; SODIUM_INSTALL=system pip install -r requirements.txt -t $@/python # We use -t to specify the destination of the
@@ -123,5 +127,8 @@ lambda-upload:lambda-function.zip ## Deploy all code to aws
 	aws lambda update-function-code \
 	--function-name $(LAMBDA_FUNCTION_NAME) \
 	--zip-file fileb://lambda-function.zip
+
+build-container:
+	docker build -t lambda-builder:latest .
 
 .PHONY: all clean $(VENV) test check format check-format pylint clean-docs-html clean-docs-markdown apidocs
