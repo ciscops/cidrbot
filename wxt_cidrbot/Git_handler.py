@@ -5,7 +5,7 @@ from github import Github
 
 
 class githandler:
-    def __init__(self, git_token=None):
+    def __init__(self):
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
         self.logging = logging.getLogger()
 

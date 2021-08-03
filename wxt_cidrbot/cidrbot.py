@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-import base64
 import json
 from webexteamssdk import WebexTeamsAPI
 from wxt_cidrbot import Command_list
@@ -14,11 +13,11 @@ class cidrbot:
         self.logging = logging.getLogger()
 
         # Webex room id
-        if "ROOM_ID" in os.environ:
-            room_id = os.getenv("ROOM_ID")
-        else:
-            logging.error("Environment variable ROOM_ID must be set")
-            sys.exit(1)
+        #if "ROOM_ID" in os.environ:
+        #    room_id = os.getenv("ROOM_ID")
+        #else:
+        #    logging.error("Environment variable ROOM_ID must be set")
+        #    sys.exit(1)
 
         if "WEBEX_BOT_ID" in os.environ:
             self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
@@ -40,6 +39,7 @@ class cidrbot:
     def msg_request(self, event):
         json_string = json.loads((event["body"]))
         event_type = json_string['name']
+        room_id = json_string['data']['roomId']
 
         if event_type == "New user":
             text = self.get_command.new_user(json_string)
@@ -47,8 +47,7 @@ class cidrbot:
 
         elif event_type == "Message":
             webex_msg_sender = json_string['data']['personEmail']
-            webex_sender_id = json_string['data']['personId']
-            room_id = json_string['data']['roomId']
+            #webex_sender_id = json_string['data']['personId']
             msg_id = json_string['data']['id']
             message = self.Api.messages.get(msg_id)
             text = message.text
@@ -56,7 +55,7 @@ class cidrbot:
             if webex_msg_sender != "CIDRBot@webex.bot":
                 try:
                     pt_id = json_string['data']['parentId']
-                except:
+                except Exception:
                     pt_id = None
 
                 if pt_id is not None:
