@@ -10,7 +10,7 @@ class githandler:
         self.logging = logging.getLogger()
 
         # Connect to git, right now using no tokens
-        self.git_init = Github()
+        self.git_api = Github()
 
         # List of git repos to pull from
         if "GIT_REPO_LIST" in os.environ:
@@ -19,11 +19,12 @@ class githandler:
             logging.error("Environment variable GIT_REPO_LIST must be set")
             sys.exit(1)
 
-    def scan_repos(self):
         self.repos = self.repos.split(",")
+
+    def scan_repos(self):
         issues = ""
         for repository in self.repos:
-            repo = self.git_init.get_repo(repository)
+            repo = self.git_api.get_repo(repository)
             print(repo)
             self.logging.debug(repo)
             open_issues = repo.get_issues(state='open')
