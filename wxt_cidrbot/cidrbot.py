@@ -3,7 +3,7 @@ import os
 import sys
 import json
 from webexteamssdk import WebexTeamsAPI
-from wxt_cidrbot import command_list
+from wxt_cidrbot import cmd_list
 
 
 class cidrbot:
@@ -29,7 +29,7 @@ class cidrbot:
         self.Api = WebexTeamsAPI()
 
         # self.git_handle = Git_handler.githandler(git_token)
-        self.get_command = command_list.cmdlist()
+        self.get_command = cmd_list.cmdlist()
 
         # Send messages returned by different parts of the code
     def send_wbx_msg(self, room, message, pt_id):
