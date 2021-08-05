@@ -1,12 +1,12 @@
 import logging
 import os
 from webexteamssdk import WebexTeamsAPI
-from wxt_cidrbot import Git_handler
+from wxt_cidrbot import git_handler
 
 
 class cmdlist:
     def __init__(self):
-        logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+        logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
         self.Api = WebexTeamsAPI()

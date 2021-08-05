@@ -3,13 +3,13 @@ import os
 import sys
 import json
 from webexteamssdk import WebexTeamsAPI
-from wxt_cidrbot import Command_list
+from wxt_cidrbot import command_list
 
 
 class cidrbot:
     def __init__(self):
         # Initialize logging
-        logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+        logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
         # Webex room id
