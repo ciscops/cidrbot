@@ -1,69 +1,70 @@
 import logging
 import os
 import sys
-import base64
 import json
-#from Git_handler import githandler
-#from Command_list import cmdlist
-#from github import Github
 from webexteamssdk import WebexTeamsAPI
-
-# fill in imports that are necessary for webex api
+from wxt_cidrbot import cmd_list
 
 
 class cidrbot:
     def __init__(self):
         # Initialize logging
-        logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+        logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
         # Webex room id
-        if "ROOM_ID" in os.environ:
-            room_id = os.getenv("ROOM_ID")
+        #if "ROOM_ID" in os.environ:
+        #    room_id = os.getenv("ROOM_ID")
+        #else:
+        #    logging.error("Environment variable ROOM_ID must be set")
+        #    sys.exit(1)
+
+        if "WEBEX_BOT_ID" in os.environ:
+            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
         else:
-            logging.error("Environment variable ROOM_ID must be set")
+            logging.error("Environment variable WEBEX_BOT_ID must be set")
             sys.exit(1)
 
         # Initialize Api
         self.Api = WebexTeamsAPI()
 
-        # Format room_id
-        # This needs to be moved, since this is needed only after the webhook arrives
-        room_uri = "ciscospark://us/ROOM/{}".format(room_id)
-        room_uri = room_uri.encode()
-        encoded_roomid = base64.b64encode(room_uri)
-        self.encoded_roomid = encoded_roomid.decode("utf-8")
-        print(self.encoded_roomid)
+        # self.git_handle = Git_handler.githandler(git_token)
+        self.get_command = cmd_list.cmdlist()
 
-    def send_wbx_msg(self, room, message):
-        self.Api.messages.create(room, markdown=message)
+        # Send messages returned by different parts of the code
+    def send_wbx_msg(self, room, message, pt_id):
+        self.Api.messages.create(room, markdown=message, parentId=pt_id)
 
+        # Handle user invite messages, general commands, and conversations
     def msg_request(self, event):
         json_string = json.loads((event["body"]))
-        webex_msg_sender = json_string['data']['personEmail']
-        room_id = json_string['data']['roomId']
         event_type = json_string['name']
-        user_name = json_string['data']['personDisplayName']
-        user_id = json_string['data']['personId']
+        room_id = json_string['data']['roomId']
 
-        name_format = f'<@personId:{user_id}|{user_name}>'
+        if event_type == "New user":
+            text = self.get_command.new_user(json_string)
+            self.send_wbx_msg(room_id, text, None)
 
-        if event_type == "Message":
+        elif event_type == "Message":
+            webex_msg_sender = json_string['data']['personEmail']
+            #webex_sender_id = json_string['data']['personId']
+            msg_id = json_string['data']['id']
+            message = self.Api.messages.get(msg_id)
+            text = message.text
+
             if webex_msg_sender != "CIDRBot@webex.bot":
-                message = self.Api.messages.get(id)
-                text = message.text
+                try:
+                    pt_id = json_string['data']['parentId']
+                except Exception:
+                    pt_id = None
 
-                if "CIDRBot" in text:
-                    text = text.strip("CIDRBot ")
-
-                if text == "help":
-                    self.send_wbx_msg(room_id, "Here is a basic help menu")
-                elif text == "list issues":
-                    self.send_wbx_msg(room_id, "Pretend this is a list of current git issues")
-                elif text == "commands":
-                    self.send_wbx_msg(room_id, "My current commands are: help, list issues, commands")
+                if pt_id is not None:
+                    message = self.Api.messages.list(room_id, parentId=pt_id)
+                    for i in message:
+                        if i.personId == self.webex_bot_id:
+                            text = self.get_command.conversation_handler(i.text, text)
+                            self.send_wbx_msg(room_id, text, pt_id)
+                            return
                 else:
-                    self.send_wbx_msg(room_id, "Sorry I don't understand your message")
-
-        elif event_type == "New user":
-            self.send_wbx_msg(room_id, "Welcome to Cidrbot testing room " + name_format)
+                    text = self.get_command.message_handler(text)
+                    self.send_wbx_msg(room_id, text, msg_id)
