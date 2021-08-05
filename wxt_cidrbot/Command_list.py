@@ -10,7 +10,7 @@ class cmdlist:
         self.logging = logging.getLogger()
 
         self.Api = WebexTeamsAPI()
-        self.git_handle = Git_handler.githandler()
+        self.git_handle = git_handler.githandler()
 
     def message_handler(self, request):
         # do a bunch of elif's here to handle all

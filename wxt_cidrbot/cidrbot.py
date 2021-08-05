@@ -29,7 +29,7 @@ class cidrbot:
         self.Api = WebexTeamsAPI()
 
         # self.git_handle = Git_handler.githandler(git_token)
-        self.get_command = Command_list.cmdlist()
+        self.get_command = command_list.cmdlist()
 
         # Send messages returned by different parts of the code
     def send_wbx_msg(self, room, message, pt_id):
