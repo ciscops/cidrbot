@@ -40,9 +40,6 @@ class githandler:
                     issue_name = issue.title
                     url = issue.html_url
                     hyperlink_format = f'<a href="{url}">{issue_name}</a>'
-
-                    #text = str(i) + ": " + str(issue.title + "\n")
-
                     text = f"{i}) {issue_type} in {repo.full_name}: {hyperlink_format}\n"
                     issues += text
                     print(issue.title)
