@@ -1,5 +1,5 @@
 # cidrbot
-CIDR bot
+Lambda based bot that aids in CL pipeline by giving users an interface to interact with Github repos/issues/prs through a Webex chatroom
 
 #### Build on MacOS
 
@@ -15,3 +15,8 @@ make lambda-layer
 make lambda-upload-webhook
 make lambda-upload-auto
 ```
+
+## Requirements  
+* webexteamssdk 1.6
+* pygithub 1.55
+* AWS Lambda, Cloudwatch, Apigateway

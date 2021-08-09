@@ -15,7 +15,10 @@ def lambda_handler(event, handle):
     #logger.debug(socket.gethostbyname(''))
     start_time = datetime.datetime.now()
     cidr = cidrbot()
-    cidr.msg_request(event)
+    if event.get("Type") == "Timer":
+        cidr.send_timed_msg()
+    else:
+        cidr.webhook_request(event)
     end_time = datetime.datetime.now()
     logger.debug('Script complete, total runtime {%s - %s}', end_time, start_time)
     return {

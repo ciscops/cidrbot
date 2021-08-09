@@ -28,33 +28,40 @@ class cmdlist:
         if text == " help":
             return "Here is a basic help menu"
         if text == " list issues":
-            # issues = self.git_handle.issues_list()
-            # If user exists, return issues, if not return signup prompt
-            return "Please verify your name"
+            return self.git_handle.issues_list("List")
         if text == " commands":
             return self.help_menu()
         if text == " reply test":
             return "reply test"
+        if "assign" in text:
+            return(self.assign_issue(text))
         return "Sorry I don't understand your message"
 
+    def assign_issue(self, text):
+        text = text.replace("assign ", '')
+
+        try:
+            repo_name = text.split(' ', 2)[1]
+            issue = text.split(' ', 3)[2]
+            assignee = text.split(' ', 4)[3]
+        except IndexError:
+            assignee = None
+            #return 'Please use format: "assign (repo) (issue number) (user)"'
+
+        if assignee is None:
+            return self.git_handle.git_assign(repo_name, issue, "message sender")
+        return self.git_handle.git_assign(repo_name, issue, assignee)
+        #return 'Please use format: "assign (repo) (issue number) (user)"'
+
         # Pardon my dust, this next function looks like a demolition site (it works)
-    def conversation_handler(self, request, text):
+    def conversation_handler(self, text):
         if "CIDRBot" in text:
             text = text.replace('CIDRBot', '')
-        self.logging.debug("below me")
-        self.logging.debug(request)
 
-        if request == "Please verify your name":
-            if text == " Paul":
-                return self.git_handle.issues_list()
-            return "Please verify your name"
-        if "Current Issues" in request:
-            if "Issue to me" in text:
-                text = text.replace("Issue to me", '')
-                message = "Issue number" + text + " Assigned to Paul"
-                return message
-            return "I don't understand, please try tying: Issue to me (issue number)"
+        if "assign" in text:
+            return(self.assign_issue(text))
         return self.message_handler(text)
+
 
     def new_user(self, json_string):
         user_name = json_string['data']['personDisplayName']
