@@ -34,7 +34,7 @@ class cmdlist:
         if text == " reply test":
             return "reply test"
         if "assign" in text:
-            return(self.assign_issue(text))
+            return (self.assign_issue(text))
         return "Sorry I don't understand your message"
 
     def assign_issue(self, text):
@@ -59,9 +59,8 @@ class cmdlist:
             text = text.replace('CIDRBot', '')
 
         if "assign" in text:
-            return(self.assign_issue(text))
+            return (self.assign_issue(text))
         return self.message_handler(text)
-
 
     def new_user(self, json_string):
         user_name = json_string['data']['personDisplayName']

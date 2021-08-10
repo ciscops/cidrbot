@@ -81,8 +81,7 @@ class cidrbot:
 
             elif event_type == "Direct Message":
                 try:
-                    verify_membership = self.Api.memberships.list(
-                        roomId=self.cidrbot_room_id, personId=webex_sender_id)
+                    verify_membership = self.Api.memberships.list(roomId=self.cidrbot_room_id, personId=webex_sender_id)
                 except ApiError:
                     verify_membership = None
 
@@ -91,4 +90,5 @@ class cidrbot:
                         i = i.to_dict()
                         if i['personId'] == webex_sender_id:
                             self.send_wbx_msg(
-                                room_id, "You sent me a direct message, and you are part of cidrbot testing room", None)
+                                room_id, "You sent me a direct message, and you are part of cidrbot testing room", None
+                            )
