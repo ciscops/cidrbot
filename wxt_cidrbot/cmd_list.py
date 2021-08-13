@@ -15,8 +15,8 @@ class cmdlist:
         self.user_email = ""
 
     def message_handler(self, request):
-        if "CIDRBot" in request:
-            text = request.replace('CIDRBot', '')
+        if "cidrbot" in request:
+            text = request.replace('cidrbot', '')
         else:
             text = ' ' + request
 
@@ -49,8 +49,8 @@ class cmdlist:
 
         # Pardon my dust, this next function looks like a demolition site (it works)
     def conversation_handler(self, text):
-        if "CIDRBot" in text:
-            text = text.replace('CIDRBot ', '')
+        if "cidrbot" in text:
+            text = text.replace('cidrbot ', '')
 
         if "assign" in text:
             return (self.assign_issue(text))
