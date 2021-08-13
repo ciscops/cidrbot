@@ -21,23 +21,42 @@ class githandler:
 
         self.repos = self.repos.split(",")
 
-    def scan_repos(self):
+    def scan_repos(self, request):
         issues = ""
+        issue_dict = {}
         for repository in self.repos:
             repo = self.git_api.get_repo(repository)
             print(repo)
             self.logging.debug(repo)
             open_issues = repo.get_issues(state='open')
             if repo.open_issues > 0:
-                #i = 1
+                i = 1
                 for issue in open_issues:
+                    if issue.pull_request is None:
+                        issue_type = "Issue"
+                    else:
+                        issue_type = "Pull Request"
+
                     issue_name = issue.title
                     url = issue.html_url
                     hyperlink_format = f'<a href="{url}">{issue_name}</a>'
-                    text = f"Issue in {repo.full_name}: {hyperlink_format}\n"
+                    text = f"{i}) {issue_type} in {repo.full_name}: {hyperlink_format}\n"
                     issues += text
                     print(issue.title)
                     print(issue.html_url)
-                    #i += 1
-        message = f"**Issues:**\n" + issues
-        return message
+                    issue_dict.update({i: issue_name})
+                    i += 1
+        if request == "List":
+            return f"**All Issues:**\n" + issues
+        return issue_dict
+
+    def issues_list(self, request):
+        return self.scan_repos(request)
+
+    # This function will eventually communicate with github, the hard coded values are for testing
+    def git_assign(self, repo, issue, user):
+        if repo == "ciscops/cidrbot":
+            if issue == "2":
+                return "Issue: " + issue + " in repo " + repo + " assigned successfully to: " + user
+            return "Issue cannot be located, ensure you typed the correct issue number"
+        return "Repo cannot be located, ensure you typed the correct repo name"
