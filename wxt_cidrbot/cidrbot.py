@@ -29,11 +29,9 @@ class cidrbot:
         # Initialize Api
         self.Api = WebexTeamsAPI()
 
-        # self.git_handle = Git_handler.githandler(git_token)
         self.get_command = cmd_list.cmdlist()
         self.git_handle = git_api_handler.githandler()
 
-        # Send messages returned by different parts of the code
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
 
@@ -41,7 +39,6 @@ class cidrbot:
         message = f"**Daily Issues:**\n" + self.git_handle.issues_list("List")
         self.send_wbx_msg(self.cidrbot_room_id, message, None)
 
-        # Handle user invite messages, general commands, and conversations
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
         event_type = json_string['name']
@@ -59,9 +56,8 @@ class cidrbot:
         msg_id = json_string['data']['id']
         message = self.Api.messages.get(msg_id)
         text = message.text
-        text = text.lower()
 
-        self.get_command.user_email_payload(webex_msg_sender)
+        self.get_command.user_email_payload(webex_msg_sender, self.Api.memberships.list(roomId=self.cidrbot_room_id))
 
         if webex_msg_sender != "CIDRBot@webex.bot":
             if event_type == "Message":
@@ -74,7 +70,8 @@ class cidrbot:
                     message = self.Api.messages.list(room_id, parentId=pt_id)
                     for i in message:
                         if i.personId == self.webex_bot_id:
-                            text = self.get_command.conversation_handler(text)
+                            #text = self.get_command.conversation_handler(i.text, text)
+                            text = self.get_command.message_handler(text)
                             self.send_wbx_msg(room_id, text, pt_id)
                             return
                 else:
