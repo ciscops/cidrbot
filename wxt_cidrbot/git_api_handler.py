@@ -84,16 +84,13 @@ class githandler:
 
     def get_assigned_status(self, assigned_user, issue_type, request):
         text = ""
-        assigned_status = []
         self.logging.debug(issue_type)
         if assigned_user is not None:
             text += f" | **Assigned**: " + str(assigned_user) + "\n"
-            assigned_status.append(True)
-            assigned_status.append(str(assigned_user))
+            assigned_status = [True, str(assigned_user)]
         else:
             text += "\n"
-            assigned_status.append(False)
-            assigned_status.append(None)
+            assigned_status = [False, None]
         if request == "List":
             return text
         return assigned_status
