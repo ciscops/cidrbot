@@ -26,22 +26,18 @@ class cmdlist:
             text = text.lower()
 
         text_split = text.split(" ")
-
         name_list = self.room_email_list
-
-        #name list is a list of all the users in the webex room, this is used for both dms and regular
-
         words = self.message_similarity(text_split, ['list', 'issues', 'me', 'my', 'all', 'repos', 'help'], 0.8)
         names = self.message_similarity(text_split, name_list, 0.9)
-
         sim_text = ""
+
         for i in words:
             sim_text += i + " "
 
         if len(names) > 0:
 
             if names[0] in self.username_email_dict:
-                if self.username_email_dict[names[0]]['duplicate'] == "True":
+                if self.username_email_dict[names[0]]['duplicate']:
                     return self.dup_user(names[0])
                 search_name = self.username_email_dict[names[0]]['login']
                 sim_text += search_name
@@ -54,9 +50,7 @@ class cmdlist:
             if self.similar(sim_text, "list issues " + search_name) > 0.85:
                 return self.issues(search_name)
 
-        if self.similar(sim_text, "list all issues") > 0.9:
-            return f"**All Issues:**\n" + self.git_handle.issues_list("List")
-        if self.similar(sim_text, "list issues") > 0.9:
+        if self.similar(sim_text, "list all issues") or self.similar(sim_text, "list issues") > 0.9:
             return f"**All Issues:**\n" + self.git_handle.issues_list("List")
         if self.similar(sim_text, "list my issues") > 0.8:
             return self.issues(self.user_email)
@@ -65,9 +59,9 @@ class cmdlist:
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu()
         if ' assign ' in text:
-            return self.assign_issue(text_split, "assign")
+            return self.assign_issue(text_split, "assign", search_name)
         if ' unassign ' in text:
-            return self.assign_issue(text_split, "unassign")
+            return self.assign_issue(text_split, "unassign", search_name)
         return f"Type **@CIDRbot help** for a list of commands\n"
 
     # Prevent cidrbot from choosing the wrong name when invoked with webex user's "first name"
@@ -76,7 +70,7 @@ class cmdlist:
         email_dict = self.username_email_dict
         name = name[0].upper() + name[1:]
         for i in email_dict:
-            if email_dict[i]['duplicate'] == "True":
+            if email_dict[i]['duplicate']:
                 login_list += "(" + email_dict[i]['login'][0].upper() + email_dict[i]['login'][1:] + ")"
 
         return "Multiple users exist with the name " + name + "; please use one of the following names instead: " + login_list
@@ -90,7 +84,7 @@ class cmdlist:
                         likely_words.append(key_word)
         return likely_words
 
-    def assign_issue(self, text, assign_status):
+    def assign_issue(self, text, assign_status, search_name):
         git_dict = self.git_handle.issues_list('Dict')
         name_list = self.room_email_list
         name_list.append("me")
@@ -113,15 +107,15 @@ class cmdlist:
         except Exception:
             return "Cannot locate issue, verify issue exists and you are spelling the repo, issue, and username correctly"
 
-        if name_sim == "me":
-            name_sim = self.user_email
+        #if name_sim == "me":
+        #    name_sim = self.user_email
 
         for i in git_dict:
             if i == repo_sim + ", " + issue_sim:
                 url = git_dict[i]['url']
                 #issue_type = git_dict[i]['type']
                 issue_title = git_dict[i]['name']
-                return self.git_handle.git_assign(repo_sim, name_sim, url, issue_title, assign_status)
+                return self.git_handle.git_assign(repo_sim, search_name, url, issue_title, assign_status, name_sim)
         return "Cannot locate issue, verify issue exists and you are spelling the repo, issue, and username correctly"
 
     def conversation_handler(self, request, text):
@@ -153,12 +147,12 @@ class cmdlist:
                 self.room_email_list.append(git_wbx_username)
 
                 if git_wbx_username in self.username_email_dict:
-                    dup_status = "True"
+                    dup_status = True
                     login = self.username_email_dict[git_wbx_username]['login']
-                    self.username_email_dict.update({git_wbx_username: {'login': login, 'duplicate': "True"}})
+                    self.username_email_dict.update({git_wbx_username: {'login': login, 'duplicate': True}})
                     git_wbx_username += x['personDisplayName'].split(" ")[1][0].lower()
                 else:
-                    dup_status = "False"
+                    dup_status = False
 
                 self.username_email_dict.update({git_wbx_username: {'login': git_wbx_login, 'duplicate': dup_status}})
 
@@ -171,7 +165,7 @@ class cmdlist:
             #value = issue_dict.get(issue)
             issue_name = issue_dict[issue]['name']
             status = issue_dict[issue]['assigned_status']
-            if status == "True":
+            if status:
                 assignee = issue_dict[issue]['assigned']
                 if assignee == target_user:
                     url = issue_dict[issue]['url']

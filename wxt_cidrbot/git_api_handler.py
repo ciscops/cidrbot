@@ -84,14 +84,16 @@ class githandler:
 
     def get_assigned_status(self, assigned_user, issue_type, request):
         text = ""
+        assigned_status = []
         self.logging.debug(issue_type)
         if assigned_user is not None:
             text += f" | **Assigned**: " + str(assigned_user) + "\n"
-            assigned_status = "True" + ", " + str(assigned_user)
+            assigned_status.append(True)
+            assigned_status.append(str(assigned_user))
         else:
             text += "\n"
-            assigned_status = "False, None"
-
+            assigned_status.append(False)
+            assigned_status.append(None)
         if request == "List":
             return text
         return assigned_status
@@ -113,8 +115,6 @@ class githandler:
         issue_info = self.get_issue_info(issue, issue_type)
         assigned_user = issue_info.get('user')
         status = self.get_assigned_status(assigned_user, issue_type, request)
-        status = status.split(", ")
-        self.logging.debug(status)
         assigned_status = status[0]
         assigned = status[1]
 
@@ -169,7 +169,7 @@ class githandler:
             return all_issues_text
         return issue_dict
 
-    def git_assign(self, repo, user, url, issue_title, assign_status):
+    def git_assign(self, repo, search_name, url, issue_title, assign_status, name_sim):
         open_issues = self.git_api.get_repo(repo).get_issues(state='open')
         for issue in open_issues:
             if issue.title == issue_title:
@@ -179,20 +179,20 @@ class githandler:
                 if 'pull_request' not in issue_json:
                     if issue.html_url == url:
                         if assign_status == "assign":
-                            issue.add_to_assignees(user)
-                            return "Issue assigned to " + user
-                        issue.remove_from_assignees(user)
-                        return "Issue unassigned from " + user
+                            issue.add_to_assignees(search_name)
+                            return "Issue assigned to " + name_sim
+                        issue.remove_from_assignees(search_name)
+                        return "Issue unassigned from " + name_sim
 
                 else:
                     issue = issue.as_pull_request()
                     if issue.html_url == url:
                         if assign_status == "assign":
-                            issue.create_review_request(reviewers=[user])
-                            return "Pull request assigned to " + user
+                            issue.create_review_request(reviewers=[search_name])
+                            return "Pull request assigned to " + name_sim
                         #else:
-                        #   issue.delete_review_request(reviewers=[user])
-                        #  return "Pull request unassigned from " + user
+                        #   issue.delete_review_request(reviewers=[search_name])
+                        #  return "Pull request unassigned from " + name_sim
 
                         # Commented out because cidr-automationg needs admin permissions to unassign pull requests
 
