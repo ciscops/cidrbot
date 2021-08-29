@@ -25,13 +25,13 @@ class dynamoapi:
 
         if request == "repos":
             return self.get_repositories()
-        if request ==  "all_users":
+        if request == "all_users":
             return self.get_all_users()
         if request == "user_info":
             return self.get_user_info(name)
         if request == "create_user":
             return self.create_user(name, status, person_id)
-        if request ==  "update_user":
+        if request == "update_user":
             return self.update_user(name, status, person_id)
         if request == "delete_user":
             return self.delete_user(name)
@@ -46,33 +46,23 @@ class dynamoapi:
 
     def get_repositories(self):
         self.table = self.dynamodb.Table('cidrbot_repos')
-        response = self.table.query(
-            KeyConditionExpression=Key('Repositories').eq('Repo_list'))
+        response = self.table.query(KeyConditionExpression=Key('Repositories').eq('Repo_list'))
 
         repos = response['Items'][0]["Repos"].split(',')
         return repos
 
     def get_all_users(self):
-        response = self.table.scan(
-            FilterExpression=Attr('reminders_enabled').eq('on')
-        )
+        response = self.table.scan(FilterExpression=Attr('reminders_enabled').eq('on'))
 
         return response
 
     def get_user_info(self, name):
-        response = self.table.query(
-            KeyConditionExpression=Key('User').eq(name))
+        response = self.table.query(KeyConditionExpression=Key('User').eq(name))
 
         return response
 
     def create_user(self, name, status, person_id):
-        self.table.put_item(
-            Item={
-                'User': name,
-                'person_id': person_id,
-                'reminders_enabled': status
-            }
-        )
+        self.table.put_item(Item={'User': name, 'person_id': person_id, 'reminders_enabled': status})
 
     def update_user(self, name, status, person_id):
         response = self.get_user_info(name)
@@ -82,30 +72,21 @@ class dynamoapi:
             self.create_user(name, status, person_id)
         else:
             self.table.update_item(
-            Key={'User': name},
-            UpdateExpression='SET reminders_enabled = :status',
-            ExpressionAttributeValues={
-                ':status': status
-            }
+                Key={'User': name},
+                UpdateExpression='SET reminders_enabled = :status',
+                ExpressionAttributeValues={':status': status}
             )
 
             if response['Items'][0]['person_id'] is not person_id:
                 self.table.update_item(
-                Key={'User': name},
-                UpdateExpression='SET person_id = :id',
-                ExpressionAttributeValues={
-                    ':id': person_id
-                }
+                    Key={'User': name},
+                    UpdateExpression='SET person_id = :id',
+                    ExpressionAttributeValues={':id': person_id}
                 )
 
         if status == "on":
             return f"Reminders enabled for user: {name}"
         return f"Reminders disabled for user: {name}"
 
-
     def delete_user(self, name):
-        self.table.delete_item(
-            Key={
-                'User': name
-            }
-        )
+        self.table.delete_item(Key={'User': name})

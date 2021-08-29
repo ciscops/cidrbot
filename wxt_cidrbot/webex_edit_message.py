@@ -4,6 +4,7 @@ import sys
 import requests
 from webexteamssdk import WebexTeamsAPI
 
+
 class webex_message:
     def __init__(self):
         # Initialize logging
@@ -23,10 +24,8 @@ class webex_message:
     def edit_message(self, message_id, message, room_id):
         URL = f'https://webexapis.com/v1/messages/{message_id}'
 
-        headers = {'Authorization': 'Bearer ' + self.wxt_access_token,
-                   'Content-type': 'application/json;charset=utf-8'}
-        post_data = {'roomId': room_id,
-                     'markdown': message}
+        headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
+        post_data = {'roomId': room_id, 'markdown': message}
         response = requests.put(URL, json=post_data, headers=headers)
         if response.status_code == 200:
             self.logging.debug("Message updated successfully")
