@@ -255,7 +255,12 @@ class githandler:
     # Ensure an issue/pr was assigned. If the username was invalid, this function returns false and the webex user is notified of an invalid username error
     def check_assigned_status(self, search_name, issue_type, repo, issue_number):
         issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
-        issue_json = issue.raw_data
+        if issue_type == "issue":
+            issue_json = issue.raw_data
+        else:
+            issue = issue.as_pull_request()
+            issue_json = issue.raw_data
+
         assignee = self.get_issue_info(issue_json, issue_type)
         if assignee.get('user') is not None:
             if search_name in assignee.get('user'):
