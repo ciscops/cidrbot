@@ -337,6 +337,10 @@ class cmdlist:
     # A list of helpful messages to aid users in interacting with cidrbot
     def help_menu(self, help_type):
         start_text = f"Here is a list of current commands and features\n"
+
+        url_name = 'confluence/CIDR/CIDRbot'
+        url = 'https://confluence-eng-rtp1.cisco.com/conf/display/CIDR/CIDRbot'
+        hyperlink_format = f'<a href="{url}">{url_name}</a>'
         end_text = (
             f"\n-For further documentation and proper message syntax, see #Confluence page link\n" +
             "-To access all of these commands in direct messages, omit **@cidrbot**\n"
