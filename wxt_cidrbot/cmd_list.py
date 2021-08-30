@@ -342,7 +342,7 @@ class cmdlist:
         url = 'https://confluence-eng-rtp1.cisco.com/conf/display/CIDR/CIDRbot'
         hyperlink_format = f'<a href="{url}">{url_name}</a>'
         end_text = (
-            f"\n-For further documentation and proper message syntax, see #Confluence page link\n" +
+            f"\n-For further documentation and proper message syntax, see {hyperlink_format}\n" +
             "-To access all of these commands in direct messages, omit **@cidrbot**\n"
         )
 
