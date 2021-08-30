@@ -75,7 +75,6 @@ class githandler:
 
     # Determine the reviewer, requested reviewer, or the assignee (if its an issue). The reviewer is currently a disabled feature
     def get_issue_info(self, issue, issue_type):
-        self.logging.debug("get issue info is called")
         if issue_type == "Pr":
             if len(issue['requested_reviewers']) > 0:
                 reviewer = ''

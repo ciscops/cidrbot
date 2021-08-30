@@ -151,7 +151,6 @@ class cidrbot:
                     i = i.to_dict()
                     if i['personId'] == webex_sender_id:
                         text = self.get_command.message_handler(text, event_type, room_id, None)
-                        self.logging.debug("hello see this")
                         if text[1] is not None and text[1] == "edit message":
                             message = text[2]
                             message_id = text[0]

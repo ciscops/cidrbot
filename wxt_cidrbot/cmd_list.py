@@ -279,7 +279,6 @@ class cmdlist:
 
         issue_dict = self.git_handle.scan_repos("Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None))
         self.logging.debug(issue_dict)
-        self.logging.debug("dict")
         message = f"**Issues assigned to** **" + str(target_user) + "**\n"
         issues_found = 0
         for issue in issue_dict:
