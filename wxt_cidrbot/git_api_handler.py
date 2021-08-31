@@ -178,7 +178,7 @@ class githandler:
         return issue_dict
 
     # Iterate through a list of repos, and parse the relevant information from two dictionaries
-    def scan_repos(self, request, assign_type, repo_name):
+    def scan_repos(self, request, assign_type, repo_name, edit_status):
         self.get_git_key()
         full_text = f"**{assign_type} Issues:**\n"
 
@@ -188,7 +188,7 @@ class githandler:
         session = requests.Session()
         headers = {'Authorization': 'token ' + self.token}
         for repository in repo_name:
-            if request == "List":
+            if edit_status:
                 if msg_edit_num < 10:
                     message_repo = repository.upper()
                     message += f"\n - Finding issues in repo: {message_repo}..."

@@ -143,19 +143,19 @@ class cmdlist:
         self.git_handle.room_and_edit_id(room_id, msg_edit_id)
         message_info_list = [msg_edit_id, 'edit message']
         if cmd_type == "all":
-            message = self.git_handle.scan_repos("List", 'All', name)
+            message = self.git_handle.scan_repos("List", 'All', name, True)
             message_info_list.append(message)
             return message_info_list
         if cmd_type == 'issues-unassigned':
-            message = self.git_handle.scan_repos("List", 'Unassigned', name)
+            message = self.git_handle.scan_repos("List", 'Unassigned', name, True)
             message_info_list.append(message)
             return message_info_list
         if cmd_type == 'repo all':
-            message = self.git_handle.scan_repos("List", 'All', name)
+            message = self.git_handle.scan_repos("List", 'All', name, True)
             message_info_list.append(message)
             return message_info_list
         if cmd_type == "repo unassigned":
-            message = self.git_handle.scan_repos("List", 'Unassigned', name)
+            message = self.git_handle.scan_repos("List", 'Unassigned', name, True)
             message_info_list.append(message)
             return message_info_list
         if cmd_type == 'user':
@@ -233,10 +233,10 @@ class cmdlist:
                 elif self.username_email_dict[user]['login'] == git_name:
                     first_name = user[0].upper() + user[1:]
 
-        try:
-            return self.git_handle.git_assign(repo, issue_number, git_name, assign_status, first_name)
-        except Exception:
-            return error_message
+        #try:
+        return self.git_handle.git_assign(repo, issue_number, git_name, assign_status, first_name)
+        #except Exception:
+          #  return error_message
 
     # Send a message to the cidrbot-users announcing the new user, and adding their data to the dynamodb table
     def new_user(self, json_string, webex_msg_sender, user_name):
@@ -277,7 +277,7 @@ class cmdlist:
             if self.username_email_dict[user]['login'] == target_user:
                 target_user = user[0].upper() + user[1:]
 
-        issue_dict = self.git_handle.scan_repos("Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None))
+        issue_dict = self.git_handle.scan_repos("Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None), False)
         self.logging.debug(issue_dict)
         message = f"**Issues assigned to** **" + str(target_user) + "**\n"
         issues_found = 0

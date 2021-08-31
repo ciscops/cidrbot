@@ -49,16 +49,16 @@ class cidrbot:
     def send_directwbx_msg(self, person_id, message):
         self.Api.messages.create(toPersonId=person_id, markdown=message)
 
-    # Send a daily message to the cidrbot users chatroom: Every day at 11am est: Cron expression 0 15 ? * * *
+    # Send a daily message to the cidrbot users chatroom: Every day at 11am est: Cron expression 0 15 * * ? *
     def send_timed_msg(self):
-        message = self.git_handle.scan_repos("List", 'All', self.dynamo.dynamo_db("repos", None, None, None))
+        message = self.git_handle.scan_repos("List", 'All', self.dynamo.dynamo_db("repos", None, None, None), False)
         self.send_wbx_msg(self.cidrbot_room_id, message, None)
 
     # Send a message to all users with reminders enabled: Every monday at 12pm est: Cron expression 0 16 ? * 2 *
     def weekly_reminder_email(self):
         remind_users = dict(self.dynamo.dynamo_db('all_users', None, None, None))
         assigned_issues_dict = self.git_handle.scan_repos(
-            "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None)
+            "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None), False
         )
 
         for i in remind_users['Items']:
