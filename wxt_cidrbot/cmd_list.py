@@ -236,7 +236,7 @@ class cmdlist:
         #try:
         return self.git_handle.git_assign(repo, issue_number, git_name, assign_status, first_name)
         #except Exception:
-          #  return error_message
+        #  return error_message
 
     # Send a message to the cidrbot-users announcing the new user, and adding their data to the dynamodb table
     def new_user(self, json_string, webex_msg_sender, user_name):
