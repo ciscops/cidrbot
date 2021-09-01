@@ -1,8 +1,6 @@
 # cidrbot
 Lambda based bot that aids in CL pipeline by giving users an interface to interact with Github repos/issues/prs through a Webex chatroom
 
-* [Confluence link](https://confluence-eng-rtp1.cisco.com/conf/display/CIDR/CIDRbot)
-
 ![cidrbot_visual_final](/assets/cidrbot_visual_final.png)
 
 ## Requirements  
