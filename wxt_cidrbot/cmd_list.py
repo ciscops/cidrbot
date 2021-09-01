@@ -338,9 +338,9 @@ class cmdlist:
     def help_menu(self, help_type):
         start_text = f"Here is a list of current commands and features\n"
 
-        url_name = ''
-        url = ''
-        hyperlink_format = f'<a href="{url}">{url_name}</a>'
+        #url_name = ''
+        #url = ''
+        #hyperlink_format = f'<a href="{url}">{url_name}</a>'
         end_text = (
             f"\n-For further documentation and proper message syntax, see '#link'\n" +
             "-To access all of these commands in direct messages, omit **@cidrbot**\n"
