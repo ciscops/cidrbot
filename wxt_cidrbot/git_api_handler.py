@@ -281,7 +281,11 @@ class githandler:
         except Exception:
             pass
 
-        issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
+        try:
+            issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
+        except Exception:
+            return f"Could not assign issue to user {search_name}, Error: **invalid repo/issue combination**"
+
         issue_json = issue.raw_data
         hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
 
@@ -297,7 +301,7 @@ class githandler:
                     )
                     return [direct_message, 'notify user', user_id, message]
                 if self.check_assigned_status(search_name, 'issue', repo, issue_number) is False:
-                    return f"Could not assign issue to user {search_name}, Error: invalid user"
+                    return f"Could not assign issue to user {search_name}, Error: **invalid user**"
                 return message
             issue.remove_from_assignees(search_name)
             return f"{hyperlink_format} successfully unassigned from " + name_sim

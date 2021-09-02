@@ -23,6 +23,7 @@ class cmdlist:
         # Init sibling py files and used global vars
         self.git_handle = git_api_handler.githandler()
         self.dynamo = dynamo_api_handler.dynamoapi()
+        self.webex_mod_status = ""
         self.user_email = ""
         self.user_person_id = ""
         self.room_email_list = []
@@ -34,11 +35,15 @@ class cmdlist:
     # Clean the message and detemine what the user typed, then execute the appropiate commands
     def message_handler(self, request, event_type, room_id, pt_id):
         if "CIDRBot" in request:
-            text = request.replace('CIDRBot', '')
+            text = request.replace("CIDRBot", "")
+            text = text.lstrip()
             text = text.lower()
+            text_split = text.split(" ")
+            text_split.insert(0, '')
         else:
             text = ' ' + request
             text = text.lower()
+            text_split = text.split(' ')
 
         words_list = ['list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in']
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'sytanx']
@@ -50,7 +55,6 @@ class cmdlist:
         for i in repo_names:
             repo_search.append(i.lower())
 
-        text_split = text.split(" ")
         self.room_email_list.append('me')
         name_list = self.room_email_list
 
@@ -76,14 +80,14 @@ class cmdlist:
                     sim_text += search_name
                     self.logging.debug(sim_text)
 
-                if self.similar(sim_text, "list issues " + search_name) > 0.85:
+                if self.similar(sim_text, "list issues " + search_name) > 0.93:
                     return self.send_update_msg(room_id, "user", search_name, None, pt_id)
 
             elif "list issues" in text and len(text_split) > 3:
                 sim_text += text_split[3]
                 search_name = text_split[3]
 
-                if self.similar(sim_text, "list issues " + search_name) > 0.85:
+                if self.similar(sim_text, "list issues " + search_name) > 0.93:
                     return self.send_update_msg(room_id, "user", search_name, None, pt_id)
 
         else:
@@ -93,6 +97,9 @@ class cmdlist:
             if self.similar(sim_text, "list issues in" + repos[0]) > 0.95:
                 return self.send_update_msg(room_id, "repo unassigned", repos, None, pt_id)
 
+        if " in " in text:
+            return f"Could not locate repo, type **@CIDRBot list repos** for a list of currently searchable repos"
+
         if self.similar(sim_text, "list all issues") > 0.9:
             return self.send_update_msg(room_id, "all", repo_names, None, pt_id)
         if self.similar(sim_text, "list issues") > 0.9:
@@ -101,9 +108,9 @@ class cmdlist:
             return self.send_update_msg(room_id, "user", self.user_email, None, pt_id)
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list()
-        if ' assign ' in text:
+        if 'assign ' in text:
             return self.send_update_msg(room_id, 'assign', None, text_split, pt_id)
-        if ' unassign ' in text:
+        if 'unassign ' in text:
             return self.send_update_msg(room_id, 'unassign', None, text_split, pt_id)
         if event_type == "Direct Message":
             if self.similar(sim_text, "enable reminders") > 0.9:
@@ -115,6 +122,16 @@ class cmdlist:
                 return self.help_menu(help_word)
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
+        if "add repo" in text or "remove repo" in text:
+            if event_type == "Message":
+                for user in self.webex_mod_status:
+                    if user.isModerator:
+                        request = text_split[1] + " " + text_split[2]
+                        name = text_split[3]
+                        return self.dynamo.dynamo_db(request, name, None, None)
+                    return "That command is only avaliable to space moderators"
+            else:
+                return "That command is only avaliable for moderators in the chatroom"
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
             "- **@CIDRbot help** + (assigning, issues, repos, reminders, sytanx) \n"
@@ -210,13 +227,18 @@ class cmdlist:
     # Determine what repo/issue combination the user entered, and call git_api_handler to assign that issue
     # Names need to be percise, 1 letter off will prevent the issue from being assigned
     def assign_issue(self, text, assign_status):
-        error_message = "The issue or repo you listed cannot be found, ensure you typed the repo, issue number, and username correctly "
+        error_message_user = "User cannot be found, ensure you typed the username correctly "
+        error_message_repo_issues = "The issue or repo you listed cannot be found, ensure you typed the repo, issue number, and username correctly "
         try:
             git_name = text[4]
+        except Exception:
+            return error_message_user
+
+        try:
             issue_number = text[3]
             repo = text[2]
         except Exception:
-            return error_message
+            return error_message_repo_issues
 
         if git_name == "me":
             git_name = self.user_email
@@ -247,7 +269,8 @@ class cmdlist:
 
     # Create a list of all users, their first name, their username minus the @ email tag
     # Create a secondary list for duplicate users. These lists are used when the bot processes the name in a message
-    def user_email_payload(self, email, person_id, email_list):
+    def user_email_payload(self, email, person_id, email_list, person_webex_mod_status):
+        self.webex_mod_status = person_webex_mod_status
         self.user_person_id = person_id
         self.user_email = email.split("@cisco.com")[0]
         self.git_handle.user_name(self.user_email)
@@ -348,7 +371,8 @@ class cmdlist:
 
         list_issues_help = (
             "-Display issues: **@Cidrbot list (my, all) issues (in) (repo name or Git username, Webex firstname)**\n" +
-            "- **@Cidrbot list issues**\n" + "- **@Cidrbot list all issues**\n" + "- **@Cidrbot list my issues**\n" +
+            "- **@Cidrbot list issues** -lists unassigned issues\n" +
+            "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
             "- **@Cidrbot list issues (Github username)**\n" + "- **@Cidrbot list issues (Webex firstname)**\n" +
             "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" + "\n"
         )
@@ -367,7 +391,11 @@ class cmdlist:
             f"-Enable/Disable weekly issue reminders & issue assigning notification\n" +
             "- **Avaliable only in direct messages with cidrbot  - DM: (Enable/Disable) reminders** \n" + "\n"
         )
-        repos_help = (f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" + "\n")
+        repos_help = (
+            f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
+            "- **@Cidrbot add repo (repo name)** - only for moderators in chat room\n" +
+            "- **@Cidrbot remove repo (repo name)** - only for moderators in chat room\n" + "\n"
+        )
 
         syntax_end_text = (
             f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"

@@ -109,7 +109,8 @@ class cidrbot:
         text = message.text
 
         self.get_command.user_email_payload(
-            webex_msg_sender, webex_sender_id, self.Api.memberships.list(roomId=self.cidrbot_room_id)
+            webex_msg_sender, webex_sender_id, self.Api.memberships.list(roomId=self.cidrbot_room_id),
+            self.Api.memberships.list(roomId=self.cidrbot_room_id, personId=webex_sender_id)
         )
 
         if event_type == "Message":
@@ -119,7 +120,7 @@ class cidrbot:
                 pt_id = None
 
             if pt_id is not None:
-                text = self.get_command.message_handler(text, None, room_id, pt_id)
+                text = self.get_command.message_handler(text, event_type, room_id, pt_id)
                 if text[1] is not None and text[1] == "edit message":
                     message = text[2]
                     message_id = text[0]
@@ -130,7 +131,7 @@ class cidrbot:
                     self.send_wbx_msg(room_id, text, pt_id)
                     return
             else:
-                text = self.get_command.message_handler(text, None, room_id, msg_id)
+                text = self.get_command.message_handler(text, event_type, room_id, msg_id)
                 if text[1] is not None and text[1] == "edit message":
                     message = text[2]
                     message_id = text[0]

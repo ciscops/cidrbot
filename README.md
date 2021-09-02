@@ -83,6 +83,11 @@ who isn't part of the room.
 
              - @Cidrbot list repos
 
+             For moderators only in chat rooms, (add or remove from repo pool):
+
+             - @Cidrbot add repo (repo name)
+             - @Cidrbot remove repo (repo name)
+
 
 ## How Cidrbot works
 
