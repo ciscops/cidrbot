@@ -46,7 +46,7 @@ class cmdlist:
             text_split = text.split(' ')
 
         words_list = ['list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in']
-        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'sytanx']
+        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
 
         repo_names = self.dynamo.dynamo_db("repos", None, None, None)
         repo_names = sorted(repo_names, key=str.lower)
@@ -134,7 +134,7 @@ class cmdlist:
                 return "That command is only avaliable for moderators in the chatroom"
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
-            "- **@CIDRbot help** + (assigning, issues, repos, reminders, sytanx) \n"
+            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax) \n"
         )
         return help_text
 
@@ -383,7 +383,7 @@ class cmdlist:
             "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" +
             "- Note: unassigning a pull request is a currently disabled feature\n" + "\n"
         )
-        sytanx_help = (
+        syntax_help = (
             f"-Syntax examples:\n" + "- Github username: **ppajersk**  \n" + "- Webex firstname: **Paul**  \n" +
             "- Repo: **ciscops/cidrbot**  \n" + "\n"
         )
@@ -402,7 +402,7 @@ class cmdlist:
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + sytanx_help + reminders_help + repos_help + end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":
@@ -411,8 +411,8 @@ class cmdlist:
             return repos_help + end_text
         if help_type == "reminders":
             return reminders_help + end_text
-        if help_type == "sytanx":
-            return sytanx_help + end_text
+        if help_type == "syntax":
+            return syntax_help + end_text
         return "No help type found"
 
     # Return a list of all the current repos
