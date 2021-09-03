@@ -35,6 +35,10 @@ class dynamoapi:
             return self.update_user(name, status, person_id)
         if request == "delete_user":
             return self.delete_user(name)
+        if request == "add repo":
+            return self.update_repo_list(name, request)
+        if request == "remove repo":
+            return self.update_repo_list(name, request)
         return "No request type found"
 
     # Remove the @ cisco tag from the username. If users join a cidrbot room who don't belong to cisco/don't have the @ tag, this can be changed to clean that
@@ -46,10 +50,31 @@ class dynamoapi:
 
     def get_repositories(self):
         self.table = self.dynamodb.Table('cidrbot_repos')
-        response = self.table.query(KeyConditionExpression=Key('Repositories').eq('Repo_list'))
+        response = self.table.scan()
+        repo_list = ""
+        for repo in response['Items']:
+            repo_list += repo['Repositories'] + ","
+        repo_list = repo_list[:-1]
+        return repo_list.split(',')
 
-        repos = response['Items'][0]["Repos"].split(',')
-        return repos
+    def update_repo_list(self, name, request):
+        self.table = self.dynamodb.Table('cidrbot_repos')
+        db_repo_name = None
+        response = self.table.query(KeyConditionExpression=Key('Repositories').eq(name))
+
+        if len(response['Items']) > 0:
+            db_repo_name = response['Items'][0]['Repositories']
+
+        if request == "remove repo":
+            if db_repo_name is not None and db_repo_name == name:
+                self.table.delete_item(Key={'Repositories': name})
+                return f"Successfuly removed repo: {name}"
+            return f"Cannot find repo: {name}"
+
+        if db_repo_name == name:
+            return f"Repo: {name} already exists"
+        self.table.put_item(Item={'Repositories': name})
+        return f"Successfuly added repo: {name}"
 
     def get_all_users(self):
         response = self.table.scan(FilterExpression=Attr('reminders_enabled').eq('on'))
