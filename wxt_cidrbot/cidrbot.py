@@ -51,16 +51,18 @@ class cidrbot:
 
     # Send a daily message to the cidrbot users chatroom: Every day at 11am est: Cron expression 0 15 * * ? *
     def send_timed_msg(self):
-        message = self.git_handle.scan_repos("List", 'All', self.dynamo.dynamo_db("repos", None, None, None), False)
+        message = self.git_handle.scan_repos(
+            "List", 'All', self.dynamo.dynamo_db("repos", None, None, None, None), False
+        )
         self.send_wbx_msg(self.cidrbot_room_id, message, None)
 
     # Send a message to all users with reminders enabled: Every monday at 12pm est: Cron expression 0 16 ? * 2 *
     def weekly_reminder_email(self):
-        remind_users = dict(self.dynamo.dynamo_db('all_users', None, None, None))
+        remind_users = dict(self.dynamo.dynamo_db('notif_users', None, None, None, None))
         assigned_issues_dict = self.git_handle.scan_repos(
-            "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None), False
+            "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None, None), False
         )
-
+        self.logging.debug(str(assigned_issues_dict))
         for i in remind_users['Items']:
             user_name = i['User']
             person_id = i['person_id']
@@ -79,11 +81,11 @@ class cidrbot:
 
         if event_type == "New user":
             user_name = self.Api.people.get(user_id).firstName
-            text = self.get_command.new_user(json_string, webex_msg_sender, user_name)
+            text = self.get_command.new_user(json_string, webex_msg_sender, user_name, self.cidrbot_room_id)
             self.send_wbx_msg(self.cidrbot_room_id, text, None)
         elif event_type == "User left":
             self.logging.debug("User left")
-            self.dynamo.dynamo_db('delete_user', webex_msg_sender, None, None)
+            self.dynamo.dynamo_db('delete_user', webex_msg_sender, None, None, None)
         elif webex_msg_sender != "CIDRBot@webex.bot":
             self.message_event(json_string, event_type, webex_msg_sender)
 
@@ -109,7 +111,7 @@ class cidrbot:
         text = message.text
 
         self.get_command.user_email_payload(
-            webex_msg_sender, webex_sender_id, self.Api.memberships.list(roomId=self.cidrbot_room_id),
+            webex_msg_sender, webex_sender_id,
             self.Api.memberships.list(roomId=self.cidrbot_room_id, personId=webex_sender_id)
         )
 
