@@ -131,9 +131,9 @@ class cmdlist:
             return self.send_update_msg(room_id, "user", self.user_email, None, pt_id)
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list()
-        if 'assign ' in text:
+        if ' assign ' in text:
             return self.send_update_msg(room_id, 'assign', None, text_split, pt_id)
-        if 'unassign ' in text:
+        if ' unassign ' in text:
             return self.send_update_msg(room_id, 'unassign', None, text_split, pt_id)
         if event_type == "Direct Message":
             for user in self.webex_mod_status:
