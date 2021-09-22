@@ -3,6 +3,8 @@ import os
 import sys
 import base64
 import json
+import re
+from datetime import datetime
 import boto3
 import requests
 from github import Github
@@ -153,7 +155,7 @@ class githandler:
         url = issue['html_url']
         hyperlink_format = f'<a href="{url}">{title}</a>'
 
-        text = f"- {issue_type} #{issue_num}: {hyperlink_format} "
+        text = f"- {issue_type} #{issue_num}: {hyperlink_format}"
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
@@ -263,6 +265,111 @@ class githandler:
         self.room_id = room_id
         self.msg_edit_id = msg_edit_id
 
+    def check_github_user(self, name):
+        self.get_git_key()
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + self.token}
+
+        user = self.session.get('https://api.github.com/users/' + name, headers=self.headers)
+
+        json_str = user.json()
+
+        if "login" in json_str:
+            if json_str['login'] == name:
+                return True
+        return False
+
+    def check_github_repo(self, repo_name):
+        if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo_name):
+            self.get_git_key()
+            self.session = requests.Session()
+            self.headers = {'Authorization': 'token ' + self.token}
+
+            repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers)
+
+            json_str = repo.json()
+
+            if "full_name" in json_str:
+                if json_str['full_name'] == repo_name:
+                    return True
+            return False
+        return False
+
+    def issue_details(self, text):
+        self.get_git_key()
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + self.token}
+
+        try:
+            issue_number = text[2]
+            repo = text[1]
+        except Exception:
+            return f"Use Syntax: **@cidrbot (repo) (issue#) info**"
+
+        if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
+            if re.match(r'^[0-9]+$', issue_number):
+
+                try:
+                    issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
+                except Exception:
+                    return f"Could not locate issue, Error: **invalid repo/issue combination**"
+
+                issue_json = issue.raw_data
+                if 'pull_request' not in issue_json:
+                    issue_type = 'issue'
+                    assignee_text = "Assignee:"
+                    issue_json = issue.raw_data
+                    commits = "0"
+                    hyperlink_commits = f'<a href="{issue.html_url}">{"Commits:"}</a>'
+                else:
+                    issue_type = 'Pr'
+                    assignee_text = "Reviewer:"
+                    issue = issue.as_pull_request()
+                    issue_json = issue.raw_data
+                    self.logging.debug(issue_json)
+                    commits = issue_json['commits']
+                    url_commit = f"https://github.com/{repo}/pull/{issue_number}/commits"
+                    hyperlink_commits = f'<a href="{url_commit}">{"Commits:"}</a>'
+
+                assignee = self.get_issue_info(issue_json, issue_type)
+                assigned_user = assignee.get('user')
+
+                if assigned_user is not None:
+                    user_url = f"https://github.com/{assigned_user}"
+                    assigned_user = f'<a href="{user_url}">{assigned_user}</a>'
+
+                updated_time = issue_json['updated_at']
+                created_time = issue_json['created_at']
+                date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
+                date_created = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
+
+                timespan = datetime.today() - date
+                timespan_created = datetime.today() - date_created
+                timespan = str(timespan).split(", ")[0]
+                timespan_created = str(timespan_created).split(", ")[0]
+                last_seen = f"Last seen: {timespan}"
+                created = f"Created: {timespan_created} ago"
+
+                hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
+                name_hyperlink = f'<a href="{issue.user.html_url}">{issue.user.login}</a>'
+
+                Repo_url = f'<a href="{"https://github.com/" + repo}">{repo}</a>'
+                Comments = f'<a href="{issue.html_url}">{"Comments:"}</a>'
+
+                spacer = f"**|**"
+
+                line1 = f"Owner: {name_hyperlink}   {spacer}  {Repo_url}"
+                line2 = f"{assignee_text} {assigned_user}   {spacer}   {Comments} {issue.comments}   {spacer}   {hyperlink_commits} {commits}"
+                line3 = f"{created}   {spacer}   {last_seen}   {spacer}   State: {issue.state} "
+
+                return (
+                    f"{issue_type} #{issue.number}: {hyperlink_format} \n" + f"- {line1}  \n" + f"- {line2}  \n" +
+                    f"- {line3}  \n"
+                )
+
+            return f"Issue number invalid"
+        return f"Repo name invalid"
+
     # Ensure an issue/pr was assigned. If the username was invalid, this function returns false and the webex user is notified of an invalid username error
     def check_assigned_status(self, search_name, issue_type, repo, issue_number):
         self.session = requests.Session()
@@ -282,7 +389,9 @@ class githandler:
 
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
     def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
-        self.get_git_key()
+        if self.check_github_user(search_name) is False:
+            return f"Invalid username: {search_name}"
+
         notify_user_status = False
         try:
             user = self.dynamo.dynamo_db('user_info', search_name, None, None, None)
@@ -322,7 +431,14 @@ class githandler:
         issue = issue.as_pull_request()
         if assign_status == "assign":
             message = f"{hyperlink_format} successfully assigned to " + name_sim
-            issue.create_review_request(reviewers=[search_name])
+
+            try:
+                issue.create_review_request(reviewers=[search_name])
+            except Exception as e:
+                if e.data['message'] == 'Review cannot be requested from pull request author.':
+                    return "You created this pull request, why exactly are you trying to assign it to yourself?"
+                return f"An error has occured: {e.data['message']}"
+
             if notify_user_status:
                 direct_message = (
                     f"Hello {name_sim}, the following pull request was just assigned to you: {hyperlink_format}," +

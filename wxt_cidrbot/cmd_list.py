@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from difflib import SequenceMatcher
 from webexteamssdk import WebexTeamsAPI
@@ -25,12 +26,14 @@ class cmdlist:
         self.git_handle = git_api_handler.githandler()
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
+        self.Api = ""
         self.webex_mod_status = ""
         self.msg_id = ""
         self.room_of_msg = ""
         self.user_email = ""
         self.user_person_id = ""
         self.username_email_dict = {}
+        self.first_name_dups = {}
 
     def similar(self, a, b):
         return SequenceMatcher(None, a, b).ratio()
@@ -48,7 +51,10 @@ class cmdlist:
             text = text.lower()
             text_split = text.split(' ')
 
-        words_list = ['list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in']
+        words_list = [
+            'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
+            'unassign', 'info'
+        ]
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
 
         repo_names = self.dynamo.dynamo_db("repos", None, None, None, None)
@@ -71,6 +77,7 @@ class cmdlist:
                 name_list.append(user['first_name'] + str(user['User'])[1].lower())
                 name_list.append(user['first_name'])
                 first_name = user['first_name'] + str(user['User'])[1].lower()
+                self.first_name_dups.update({user['User']: {'first_name': user['first_name']}})
                 self.username_email_dict.update({
                     user['first_name']: {
                         'login': user['User'],
@@ -82,8 +89,11 @@ class cmdlist:
         name_list.append('me')
 
         repos = self.message_similarity(text_split, repo_search, 0.9)
-        words = self.message_similarity(text_split, words_list + help_words_list, 0.8)
+        words = self.message_similarity(text_split, words_list + help_words_list, 0.9)
         names = self.message_similarity(text_split, name_list, 0.9)
+
+        self.logging.debug(words)
+
         sim_text = ""
 
         for i in words:
@@ -110,11 +120,18 @@ class cmdlist:
                 sim_text += text_split[3]
                 search_name = text_split[3]
 
-                if self.similar(sim_text, "list issues " + search_name) > 0.93:
-                    return self.send_update_msg(room_id, "user", search_name, None, pt_id)
+                if re.match(r'^[a-zA-Z-0-9._]+$', search_name):
+                    if self.similar(sim_text, "list issues " + search_name) > 0.93:
+                        if self.git_handle.check_github_user(search_name):
+                            return self.send_update_msg(room_id, "user", search_name, None, pt_id)
+                return "Please enter a valid name, omit the @email for usernames"
 
         else:
             sim_text += repos[0]
+
+            # Since it's a list of repos that is only added (if they match, if it's regex'd and if it's in the org
+            # This should be fine)
+
             if self.similar(sim_text, "list all issues in" + repos[0]) > 0.95:
                 return self.send_update_msg(room_id, "repo all", repos, None, pt_id)
             if self.similar(sim_text, "list issues in" + repos[0]) > 0.95:
@@ -131,9 +148,11 @@ class cmdlist:
             return self.send_update_msg(room_id, "user", self.user_email, None, pt_id)
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list()
-        if ' assign ' in text:
+        if 'info' in words:
+            return self.send_update_msg(room_id, 'info', None, text_split, pt_id)
+        if 'assign' in words:
             return self.send_update_msg(room_id, 'assign', None, text_split, pt_id)
-        if ' unassign ' in text:
+        if 'unassign' in words:
             return self.send_update_msg(room_id, 'unassign', None, text_split, pt_id)
         if event_type == "Direct Message":
             for user in self.webex_mod_status:
@@ -154,10 +173,13 @@ class cmdlist:
                     if user.isModerator:
                         request = text_split[1] + " " + text_split[2]
                         name = text_split[3]
-                        return self.dynamo.dynamo_db(request, name, None, None, None)
-                    return "That command is only available to space moderators"
+                        if self.git_handle.check_github_repo(name):
+                            return self.dynamo.dynamo_db(request, name, None, None, None)
+                        return "Invalid repo name, or repo does not exist"
+                    return "That command is only avaliable to space moderators"
             else:
-                return "That command is only available for moderators in the chatroom"
+                return "That command is only avaliable for moderators in the chatroom"
+
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
             "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax) \n"
@@ -177,6 +199,8 @@ class cmdlist:
             text = "Retrieving a list of unassigned issues, one moment..."
         elif cmd_type == "user":
             text = f"Retrieving issues, one moment..."
+        elif cmd_type == 'info':
+            text = f"Retrieving issue information..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
@@ -221,6 +245,10 @@ class cmdlist:
                 return message
             message_info_list.append(message)
             return message_info_list
+        if cmd_type == 'info':
+            message = self.git_handle.issue_details(text_split)
+            message_info_list.append(message)
+            return message_info_list
         return "Interal error"
 
     # Find the message id of the last message the bot sent, so it knows what message to update
@@ -234,16 +262,30 @@ class cmdlist:
     # Prevent cidrbot from choosing the wrong name when invoked with webex user's "first name"
     # Since cidrbot allows for referencing users in the cidrbot-users room by their webex first name, users with duplicate first names may exist
     def dup_user(self, name):
-        login_list = ""
-        email_dict = self.username_email_dict
-        name = name[0].upper() + name[1:]
-        for i in email_dict:
-            if email_dict[i]['duplicate']:
-                full_user_name = email_dict[i]['login'][0].lower() + email_dict[i]['login'][1:]
-                if full_user_name not in login_list:
-                    login_list += "(" + full_user_name + ")"
 
-        return f"Multiple users exist with the name **" + name + "**; please use one of the following names instead: **" + login_list + "**"
+        #email_dict = self.username_email_dict
+
+        #for i in email_dict:
+        #    if email_dict[i]['duplicate']:
+        #        full_user_name = email_dict[i]['login'][0].lower() + email_dict[i]['login'][1:]
+        #        if full_user_name not in login_list:
+        #            login_list += "(" + full_user_name + ")"
+
+        login_list = ""
+        user_list = ""
+        name = name[0].upper() + name[1:]
+
+        for i in self.first_name_dups:
+            self.logging.debug(name)
+            self.logging.debug(self.first_name_dups[i]['first_name'])
+            if self.first_name_dups[i]['first_name'] == name.lower():
+                login_list += "(" + i + ")"
+            else:
+                user_list += "(" + i + ")"
+
+        if login_list != "":
+            return f"Multiple users exist with the name **" + name + "**; please use one of the following names instead: **" + login_list + "**"
+        return f"Try using one of the following names: **" + user_list + "**"
 
     def message_similarity(self, text_split, word_list, msg_threshold):
         likely_words = []
@@ -258,7 +300,8 @@ class cmdlist:
     # Names need to be percise, 1 letter off will prevent the issue from being assigned
     def assign_issue(self, text, assign_status):
         error_message_user = "User cannot be found, ensure you typed the username correctly "
-        error_message_repo_issues = "The issue or repo you listed cannot be found, ensure you typed the repo, issue number, and username correctly "
+        error_message_repo_issues = "The issue or repo you listed cannot be found, ensure you typed the repo, issue number correctly "
+
         try:
             git_name = text[4]
         except Exception:
@@ -285,16 +328,22 @@ class cmdlist:
                 elif self.username_email_dict[user]['login'] == git_name:
                     first_name = user[0].upper() + user[1:]
 
+        if re.match(r'^[a-zA-Z-0-9._]+$', git_name):
+            if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
+                return self.git_handle.git_assign(repo, issue_number, git_name, assign_status, first_name)
+            return error_message_repo_issues
+        return error_message_user
         #try:
-        return self.git_handle.git_assign(repo, issue_number, git_name, assign_status, first_name)
         #except Exception:
         #  return error_message
 
     # Send a message to the cidrbot-users announcing the new user, and adding their data to the dynamodb table
     def new_user(self, json_string, webex_msg_sender, user_name, room_id):
+        self.Api = WebexTeamsAPI()
         user_id = json_string['data']['personId']
         user_json_details = self.Api.memberships.list(roomId=room_id, personId=user_id)
-        user_json_details = user_json_details.to_dict()
+        for i in user_json_details:
+            user_json_details = i.to_dict()
         full_name = user_json_details['personDisplayName']
         name_format = f'<@personId:{user_id}|{user_name}>'
         self.dynamo.dynamo_db('create_user', webex_msg_sender, "off", user_id, full_name)
@@ -316,8 +365,8 @@ class cmdlist:
             if self.username_email_dict[user]['login'] == target_user:
                 target_user = user[0].upper() + user[1:]
 
-        edit_message = f"Retrieving issues, one moment... \n - Searching all issues \n"
-        self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
+        edit_message = f"Retrieving issues, one moment... \n "
+        self.webex.edit_message(self.msg_id, edit_message + f"- Searching all issues \n", self.room_of_msg)
 
         issue_dict = self.git_handle.scan_repos(
             "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None, None), False
@@ -334,7 +383,7 @@ class cmdlist:
                 assignee = issue_dict[issue]['assigned'].split(", ")
                 for name in assignee:
                     if name == assignee_target:
-                        edit_message += f"Issue located: {issue_name} \n"
+                        edit_message += f"- Issue located: {issue_name} \n"
                         if issues_found < 8:
                             self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
                         url = issue_dict[issue]['url']
