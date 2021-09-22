@@ -30,6 +30,12 @@ class githandler:
             logging.error("Environment variable REGION_NAME must be set")
             sys.exit(1)
 
+        if "SECRET_KEY" in os.environ:
+            self.secret_key = os.getenv("SECRET_KEY")
+        else:
+            logging.error("Environment variable SECRET_KEY must be set")
+            sys.exit(1)
+
         # Init sibling py files and used global vars
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
@@ -39,6 +45,8 @@ class githandler:
         self.git_api = ""
         self.token = ""
         self.repos = []
+        self.headers = {}
+        self.session = ""
 
     # Connect to aws secrets, and retrieve the github access token
     def get_git_key(self):
@@ -63,43 +71,44 @@ class githandler:
             if 'SecretString' in get_secret_value_response:
                 secret = get_secret_value_response['SecretString']
                 json_string = json.loads(secret)
-                token = json_string['cidrbot_access_token']
+                token = json_string[self.secret_key]
                 self.git_api = Github(token)
                 self.token = token
             else:
                 decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
                 json_string = json.loads(decoded_binary_secret)
-                token = json_string['cidrbot_access_token']
+                token = json_string[self.secret_key]
                 self.git_api = Github(token)
                 self.token = token
 
     # Determine the reviewer, requested reviewer, or the assignee (if its an issue). The reviewer is currently a disabled feature
     def get_issue_info(self, issue, issue_type):
         if issue_type == "Pr":
+            reviewer = ""
             if len(issue['requested_reviewers']) > 0:
-                reviewer = ''
                 if issue['requested_reviewers'][0]['login'] is not None:
                     for i in issue['requested_reviewers']:
                         reviewer += i['login'] + ', '
-                    reviewer = reviewer[:-2]
 
-                if len(reviewer) < 1:
-                    reviewer = None
+            if 'review_comments_url' in issue:
+                review_url = issue['url'] + "/reviews"
+                self.logging.debug(issue)
+                review = self.session.get(review_url, headers=self.headers)
+                self.logging.debug(review.json())
+                review_json = review.json()
 
-            # Currently disabled method for retrieving the reviewer of a pull request (a requested reviewer who sumbitted a review)
-            # Direct http requests to git's rest api won't return 'review_comments' in the json
+                for user_review in review_json:
+                    if len(review_json) > 0:
+                        if user_review['state'] == 'CHANGES_REQUESTED' or user_review['state'] == "COMMENTED":
+                            reviewer += user_review['user']['login'] + ', '
+                            self.logging.debug(user_review['user']['login'])
+                            break
 
-            #elif issue['review_comments'] > 0:
-            #   https://api.github.com/repos/CiscoDevNet/python-viptela/pulls/78/comments
-            #   reviewer = None
-            #   for i in get_rev:
-            #       rev_as_dict = i.raw_data
-            #       if rev_as_dict['state'] == 'CHANGES_REQUESTED' or rev_as_dict['state'] == "COMMENTED":
-            #          reviewer = i.user.login
-            #          break
-
-            else:
+            if len(reviewer) < 1:
                 reviewer = None
+            else:
+                reviewer = reviewer[:-2]
+
             return {'issue_type': issue_type, 'user': reviewer}
 
         self.logging.debug(issue)
@@ -144,7 +153,7 @@ class githandler:
         url = issue['html_url']
         hyperlink_format = f'<a href="{url}">{title}</a>'
 
-        text = f"- {issue_type} #{issue_num}: {hyperlink_format}"
+        text = f"- {issue_type} #{issue_num}: {hyperlink_format} "
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
@@ -185,8 +194,8 @@ class githandler:
         message = f"Retrieving a list of {assign_type} issues, one moment..."
         msg_edit_num = 1
         issue_dict = {}
-        session = requests.Session()
-        headers = {'Authorization': 'token ' + self.token}
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + self.token}
         for repository in repo_name:
             if edit_status:
                 if msg_edit_num < 10:
@@ -200,10 +209,12 @@ class githandler:
             all_issues_text = ""
             issue_num = 0
 
-            all_issues = session.get(
-                'https://api.github.com/repos/' + repository + '/issues?state=open', headers=headers
+            all_issues = self.session.get(
+                'https://api.github.com/repos/' + repository + '/issues?state=open', headers=self.headers
             )
-            all_prs = session.get('https://api.github.com/repos/' + repository + '/pulls?state=open', headers=headers)
+            all_prs = self.session.get(
+                'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers
+            )
 
             for pr in all_prs.json():
                 number = pr['number']
@@ -254,6 +265,8 @@ class githandler:
 
     # Ensure an issue/pr was assigned. If the username was invalid, this function returns false and the webex user is notified of an invalid username error
     def check_assigned_status(self, search_name, issue_type, repo, issue_number):
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + self.token}
         issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
         if issue_type == "issue":
             issue_json = issue.raw_data
@@ -272,7 +285,7 @@ class githandler:
         self.get_git_key()
         notify_user_status = False
         try:
-            user = self.dynamo.dynamo_db('user_info', search_name, None, None)
+            user = self.dynamo.dynamo_db('user_info', search_name, None, None, None)
             user_id = user['Items'][0]['person_id']
 
             if search_name != self.user_search_name:
