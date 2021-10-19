@@ -92,10 +92,13 @@ class githandler:
                     for i in issue['requested_reviewers']:
                         reviewer += i['login'] + ', '
 
+
             if 'review_comments_url' in issue:
                 review_url = issue['url'] + "/reviews"
                 self.logging.debug(issue)
-                review = self.session.get(review_url, headers=self.headers)
+                review = self.session.get(
+                review_url, headers=self.headers
+                )
                 self.logging.debug(review.json())
                 review_json = review.json()
 
@@ -214,9 +217,7 @@ class githandler:
             all_issues = self.session.get(
                 'https://api.github.com/repos/' + repository + '/issues?state=open', headers=self.headers
             )
-            all_prs = self.session.get(
-                'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers
-            )
+            all_prs = self.session.get('https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers)
 
             for pr in all_prs.json():
                 number = pr['number']
@@ -270,7 +271,8 @@ class githandler:
         self.session = requests.Session()
         self.headers = {'Authorization': 'token ' + self.token}
 
-        user = self.session.get('https://api.github.com/users/' + name, headers=self.headers)
+        user = self.session.get(
+                'https://api.github.com/users/' + name , headers=self.headers)
 
         json_str = user.json()
 
@@ -285,7 +287,8 @@ class githandler:
             self.session = requests.Session()
             self.headers = {'Authorization': 'token ' + self.token}
 
-            repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers)
+            repo = self.session.get(
+                    'https://api.github.com/repos/' + repo_name , headers=self.headers)
 
             json_str = repo.json()
 
@@ -314,6 +317,7 @@ class githandler:
                 except Exception:
                     return f"Could not locate issue, Error: **invalid repo/issue combination**"
 
+
                 issue_json = issue.raw_data
                 if 'pull_request' not in issue_json:
                     issue_type = 'issue'
@@ -340,8 +344,8 @@ class githandler:
 
                 updated_time = issue_json['updated_at']
                 created_time = issue_json['created_at']
-                date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
-                date_created = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
+                date = datetime.strptime(updated_time,"%Y-%m-%dT%H:%M:%SZ")
+                date_created = datetime.strptime(created_time,"%Y-%m-%dT%H:%M:%SZ")
 
                 timespan = datetime.today() - date
                 timespan_created = datetime.today() - date_created
@@ -363,9 +367,10 @@ class githandler:
                 line3 = f"{created}   {spacer}   {last_seen}   {spacer}   State: {issue.state} "
 
                 return (
-                    f"{issue_type} #{issue.number}: {hyperlink_format} \n" + f"- {line1}  \n" + f"- {line2}  \n" +
-                    f"- {line3}  \n"
-                )
+                    f"{issue_type} #{issue.number}: {hyperlink_format} \n" +
+                    f"- {line1}  \n" +
+                    f"- {line2}  \n" +
+                    f"- {line3}  \n" )
 
             return f"Issue number invalid"
         return f"Repo name invalid"
@@ -394,11 +399,11 @@ class githandler:
 
         notify_user_status = False
         try:
-            user = self.dynamo.dynamo_db('user_info', search_name, None, None, None)
-            user_id = user['Items'][0]['person_id']
+            user = self.dynamo.dynamo_db('user_info', search_name, None, None, None, self.room_id)
+            user_id = user['person_id']
 
             if search_name != self.user_search_name:
-                if user['Items'][0]['reminders_enabled'] == "on":
+                if user['reminders_enabled'] == "on":
                     notify_user_status = True
         except Exception:
             pass
@@ -431,6 +436,7 @@ class githandler:
         issue = issue.as_pull_request()
         if assign_status == "assign":
             message = f"{hyperlink_format} successfully assigned to " + name_sim
+
 
             try:
                 issue.create_review_request(reviewers=[search_name])

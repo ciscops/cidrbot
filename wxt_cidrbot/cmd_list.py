@@ -45,47 +45,56 @@ class cmdlist:
             text = text.lstrip()
             text = text.lower()
             text_split = text.split(" ")
-            text_split.insert(0, '')
+            text_split.insert(0,'')
         else:
             text = ' ' + request
             text = text.lower()
             text_split = text.split(' ')
 
-        words_list = [
-            'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
-            'unassign', 'info'
-        ]
+
+        if event_type == "Direct Message":
+            #Change this self.webex thing to be a more accurate name please
+            for user in self.webex_mod_status:
+                user = user.to_dict()
+                full_name = user['personDisplayName']
+            if "enable reminders" in text:
+                return self.dynamo.dynamo_db('update_user', self.user_email, "on", self.user_person_id, full_name, room_id)
+            if "disable reminders" in text:
+                return self.dynamo.dynamo_db('update_user', self.user_email, "off", self.user_person_id, full_name, room_id)
+            if "help" in text:
+                return self.help_menu("all")
+            return f"List of avaliable commands in direct messages: \n - enable/disable reminders"
+
+        words_list = ['list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign', 'unassign', 'info', 'test']
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
 
-        repo_names = self.dynamo.dynamo_db("repos", None, None, None, None)
+        repo_names = self.dynamo.dynamo_db("repos", None, None, None, None, room_id)
         repo_names = sorted(repo_names, key=str.lower)
         repo_search = []
 
         for i in repo_names:
             repo_search.append(i.lower())
 
-        user_dict = self.dynamo.dynamo_db("all_users", None, None, None, None)
+        user_dict = self.dynamo.dynamo_db("all_users", None, None, None, None, room_id)
+        #self.logging.debug("User dict: " + str(user_dict))
 
         name_list = []
-        for user in user_dict['Items']:
-            name_list.append(user['User'])
+        for user in user_dict:
+            name_list.append(user)
 
-            if user['dup_status'] is False:
-                name_list.append(user['first_name'])
-                first_name = user['first_name']
+            if user_dict[user]['dup_status'] is False:
+                first_name = str(user_dict[user]['first_name']).lower()
+                name_list.append(first_name)
             else:
-                name_list.append(user['first_name'] + str(user['User'])[1].lower())
-                name_list.append(user['first_name'])
-                first_name = user['first_name'] + str(user['User'])[1].lower()
-                self.first_name_dups.update({user['User']: {'first_name': user['first_name']}})
-                self.username_email_dict.update({
-                    user['first_name']: {
-                        'login': user['User'],
-                        'duplicate': user['dup_status']
-                    }
-                })
+                first_name_lower = str(user_dict[user]['first_name']).lower()
+                name_list.append(first_name_lower + str(user)[1].lower())
+                name_list.append(first_name_lower)
+                first_name = str(first_name_lower + str(user)[1].lower())
+                self.first_name_dups.update({user: {'first_name': first_name_lower}})
+                self.username_email_dict.update({first_name_lower: {'login': user, 'duplicate': user_dict[user]['dup_status']}})
 
-            self.username_email_dict.update({first_name: {'login': user['User'], 'duplicate': user['dup_status']}})
+            self.username_email_dict.update({first_name: {'login': user, 'duplicate': user_dict[user]['dup_status']}})
+
         name_list.append('me')
 
         repos = self.message_similarity(text_split, repo_search, 0.9)
@@ -146,35 +155,45 @@ class cmdlist:
             return self.send_update_msg(room_id, "issues-unassigned", repo_names, None, pt_id)
         if self.similar(sim_text, "list my issues") > 0.9:
             return self.send_update_msg(room_id, "user", self.user_email, None, pt_id)
+        #if event_type == "Message":
         if self.similar(sim_text, "list repos") > 0.8:
-            return self.repo_list()
+            return self.repo_list(room_id)
         if 'info' in words:
             return self.send_update_msg(room_id, 'info', None, text_split, pt_id)
         if 'assign' in words:
             return self.send_update_msg(room_id, 'assign', None, text_split, pt_id)
         if 'unassign' in words:
             return self.send_update_msg(room_id, 'unassign', None, text_split, pt_id)
-        if event_type == "Direct Message":
-            for user in self.webex_mod_status:
-                user = user.to_dict()
-                full_name = user['personDisplayName']
-            if self.similar(sim_text, "enable reminders") > 0.9:
-                return self.dynamo.dynamo_db('update_user', self.user_email, "on", self.user_person_id, full_name)
-            if self.similar(sim_text, "disable reminders") > 0.9:
-                return self.dynamo.dynamo_db('update_user', self.user_email, "off", self.user_person_id, full_name)
+        #if event_type == "Direct Message":
+        #    for user in self.webex_mod_status:
+        #        user = user.to_dict()
+        #        full_name = user['personDisplayName']
+        #    if self.similar(sim_text, "enable reminders") > 0.9:
+        #        return self.dynamo.dynamo_db('update_user', self.user_email, "on", self.user_person_id, full_name, room_id)
+        #    if self.similar(sim_text, "disable reminders") > 0.9:
+        #        return self.dynamo.dynamo_db('update_user', self.user_email, "off", self.user_person_id, full_name, room_id)
         for help_word in help_words_list:
             if self.similar(sim_text, "help" + help_word) > 0.8:
                 return self.help_menu(help_word)
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
+
+
+        if self.similar(sim_text, "test") > 0.8:
+            self.logging.debug("HERE!")
+            all_ids = self.dynamo.dynamo_db("repos", None, None, None, None, room_id)
+            return str(all_ids)
+
+
         if "add repo" in text or "remove repo" in text:
             if event_type == "Message":
+                #doesn't need to be webex_mod_status, just say something like "webex user "
                 for user in self.webex_mod_status:
                     if user.isModerator:
                         request = text_split[1] + " " + text_split[2]
                         name = text_split[3]
                         if self.git_handle.check_github_repo(name):
-                            return self.dynamo.dynamo_db(request, name, None, None, None)
+                            return self.dynamo.dynamo_db(request, name, None, None, None, room_id)
                         return "Invalid repo name, or repo does not exist"
                     return "That command is only avaliable to space moderators"
             else:
@@ -185,6 +204,7 @@ class cmdlist:
             "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax) \n"
         )
         return help_text
+
 
     # Send a status message to the user to let them know the bot is trying to find all the issues, then continue
     def send_update_msg(self, room_id, cmd_type, name, text_split, pt_id):
@@ -228,7 +248,7 @@ class cmdlist:
             message_info_list.append(message)
             return message_info_list
         if cmd_type == 'user':
-            message = self.issues(name)
+            message = self.issues(name, room_id)
             message_info_list.append(message)
             return message_info_list
         if cmd_type == 'assign':
@@ -335,7 +355,7 @@ class cmdlist:
         return error_message_user
         #try:
         #except Exception:
-        #  return error_message
+          #  return error_message
 
     # Send a message to the cidrbot-users announcing the new user, and adding their data to the dynamodb table
     def new_user(self, json_string, webex_msg_sender, user_name, room_id):
@@ -346,7 +366,7 @@ class cmdlist:
             user_json_details = i.to_dict()
         full_name = user_json_details['personDisplayName']
         name_format = f'<@personId:{user_id}|{user_name}>'
-        self.dynamo.dynamo_db('create_user', webex_msg_sender, "off", user_id, full_name)
+        self.dynamo.dynamo_db('create_user', webex_msg_sender, "off", user_id, full_name, room_id)
 
         return f"Welcome to Cidrbot Users room {name_format}, type *@CIDRbot help* for a list of commands\n"
 
@@ -355,11 +375,11 @@ class cmdlist:
     def user_email_payload(self, email, person_id, person_webex_mod_status):
         self.webex_mod_status = person_webex_mod_status
         self.user_person_id = person_id
-        self.user_email = email.split("@cisco.com")[0]
+        self.user_email = email.split("@", 1)[0]
         self.git_handle.user_name(self.user_email)
 
     # Find all the issues assigned to a specified user
-    def issues(self, target_user):
+    def issues(self, target_user, room_id):
         assignee_target = target_user
         for user in self.username_email_dict:
             if self.username_email_dict[user]['login'] == target_user:
@@ -368,9 +388,7 @@ class cmdlist:
         edit_message = f"Retrieving issues, one moment... \n "
         self.webex.edit_message(self.msg_id, edit_message + f"- Searching all issues \n", self.room_of_msg)
 
-        issue_dict = self.git_handle.scan_repos(
-            "Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None, None), False
-        )
+        issue_dict = self.git_handle.scan_repos("Dict", 'All', self.dynamo.dynamo_db("repos", None, None, None, None, room_id), False)
         self.logging.debug(issue_dict)
 
         message = f"**Issues assigned to** **" + str(target_user) + "**\n"
@@ -404,27 +422,27 @@ class cmdlist:
 
     # When weekly_reminder_email function is called by api_gateway, find the current issues assigned to a user
     def get_user_issues(self, assigned_issues_dict, user):
-        message = f"**CIDRBOT weekly reminder, please review the listed issues currently assigned to you:**\n"
         issues_found = 0
+        message = ""
         for issue in assigned_issues_dict:
             status = assigned_issues_dict[issue]['assigned_status']
             if status:
                 assignee = assigned_issues_dict[issue]['assigned']
-                if assignee == user:
-                    repo_name = issue.split(', ', 1)[0]
-                    issue_name = assigned_issues_dict[issue]['name']
-                    url = assigned_issues_dict[issue]['url']
-                    issue_type = assigned_issues_dict[issue]['type']
-                    issue_num = assigned_issues_dict[issue]['number']
+                assignee_list = assignee.split(', ')
+                for assigned_user in assignee_list:
+                    if assigned_user == user:
+                        repo_name = issue.split(', ', 1)[0]
+                        issue_name = assigned_issues_dict[issue]['name']
+                        url = assigned_issues_dict[issue]['url']
+                        issue_type = assigned_issues_dict[issue]['type']
+                        issue_num = assigned_issues_dict[issue]['number']
 
-                    name_format = issue_name + " #" + str(issue_num)
-                    hyperlink_format = f'<a href="{url}">{name_format}</a>'
-                    text = f"- {issue_type} in {repo_name}: {hyperlink_format}"
+                        name_format = issue_name + " #" + str(issue_num)
+                        hyperlink_format = f'<a href="{url}">{name_format}</a>'
+                        text = f"- {issue_type} in {repo_name}: {hyperlink_format}"
 
-                    message += text + '\n'
-                    issues_found += 1
-
-        message += f"\n -To disable these messages, type: **disable reminders**"
+                        message += text + '\n'
+                        issues_found += 1
 
         if issues_found > 0:
             return message
@@ -432,20 +450,19 @@ class cmdlist:
 
     # A list of helpful messages to aid users in interacting with cidrbot
     def help_menu(self, help_type):
-        start_text = f"Here is a list of current commands and features\n"
+        start_text = f"Here is a list of current commands and features (Note: excluding reminder toggling, no other commands are accessible in direct messages with cidrbot)\n" + "\n"
 
         #url_name = ''
-        url = ''
+        #url = ''
         #hyperlink_format = f'<a href="{url}">{url_name}</a>'
         end_text = (
-            f"\n-For further documentation and proper message syntax, see {url}\n" +
+            f"\n-For further documentation and proper message syntax, see hyperlink_format\n" +
             "-To access all of these commands in direct messages, omit **@cidrbot**\n"
         )
 
         list_issues_help = (
             "-Display issues: **@Cidrbot list (my, all) issues (in) (repo name or Git username, Webex firstname)**\n" +
-            "- **@Cidrbot list issues** -lists unassigned issues\n" +
-            "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
+            "- **@Cidrbot list issues** -lists unassigned issues\n" + "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
             "- **@Cidrbot list issues (Github username)**\n" + "- **@Cidrbot list issues (Webex firstname)**\n" +
             "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" + "\n"
         )
@@ -468,7 +485,7 @@ class cmdlist:
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
             "- **@Cidrbot add repo (repo name)** - only for moderators in chat room\n" +
             "- **@Cidrbot remove repo (repo name)** - only for moderators in chat room\n" + "\n"
-        )
+            )
 
         syntax_end_text = (
             f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"
@@ -489,8 +506,8 @@ class cmdlist:
         return "No help type found"
 
     # Return a list of all the current repos
-    def repo_list(self):
-        repos = self.dynamo.dynamo_db("repos", None, None, None, None)
+    def repo_list(self, room_id):
+        repos = self.dynamo.dynamo_db("repos", None, None, None, None, room_id)
         message = "Current list of repositories Cidrbot searches:\n"
         for repo in repos:
             repo_url = "https://github.com/" + str(repo)

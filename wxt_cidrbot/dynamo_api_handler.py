@@ -1,8 +1,8 @@
 import logging
 import os
+import sys
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
-
+from boto3.dynamodb.conditions import Key
 
 class dynamoapi:
     def __init__(self):
@@ -10,7 +10,6 @@ class dynamoapi:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
-        # Init global vars, which immediately get converted to objects in exactly 4 lines of code. This is pylinting's fault! Not my choice :((
         self.dynamodb = ""
         self.table = ""
 
@@ -19,82 +18,186 @@ class dynamoapi:
         self.table = self.dynamodb.Table('cidrbot_user_message_preferences')
 
     # Start connection to dynamo. This is done as a function and not in the init because dynamo isn't necessarily called each time the lambda function is run
-    def dynamo_db(self, request, name, status, person_id, full_name):
+    def dynamo_db(self, request, name, status, person_id, full_name, room_id):
         self.get_dynamo()
         name = self.clean_username(name)
 
+
+        if request == "create_room":
+            return self.create_room(room_id, name)
+        if request == "delete_room":
+            return self.delete_room(room_id)
+        if request == "all_ids":
+            return self.get_all_ids()
         if request == "repos":
-            return self.get_repositories()
+            return self.get_repositories(room_id)
         if request == "all_users":
-            return self.user_dict()
-        if request == "notif_users":
+            return self.user_dict(room_id)
+        if request ==  "notif_users":
             return self.get_notif_users()
         if request == "user_info":
-            return self.get_user_info(name)
+            return self.get_user_info(name, room_id)
         if request == "create_user":
             return self.create_user(name, status, person_id, full_name)
-        if request == "update_user":
-            return self.update_user(name, status, person_id, full_name)
+        if request ==  "update_user":
+            return self.update_user(name, status, person_id, room_id)
         if request == "delete_user":
             return self.delete_user(name)
         if request == "add repo":
-            return self.update_repo_list(name, request)
+            return self.update_repo_list(name, request, room_id)
         if request == "remove repo":
-            return self.update_repo_list(name, request)
+            return self.update_repo_list(name, request, room_id)
         return "No request type found"
 
-    # Remove the @ cisco tag from the username. If users join a cidrbot room who don't belong to cisco/don't have the @ tag, this can be changed to clean that
+    def create_room(self, room_id, name):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        self.table.put_item(Item={'room_id':room_id})
+
+        self.logging.debug(name)
+        self.logging.debug(len(name))
+
+        sys.exit(1)
+
+
+        #self.table.update_item(
+        #    Key={'room_id': room_id},
+        #    UpdateExpression="set #user.#username= :name",
+        #    ExpressionAttributeNames={
+        #        '#user': 'users',
+        #        '#username' : name
+        #    },
+        #    ExpressionAttributeValues = {
+        #        ':name': {"M" : { "reminders_enabled" : { "S" : "off" },
+        #                        "dup_status" : { "BOOL" : dup_status },
+        #                        "first_name" : { "S" : first_name },
+        #                        "person_id" : { "S" : person_id }}}
+        #        })
+
+
+
+
+
+    def delete_room(self, room_id):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        self.table.delete_item(Key={'room_id': room_id})
+
+        try:
+            response = self.table.query(
+                KeyConditionExpression=Key('room_id').eq(room_id))
+            self.logging.debug("Room could not be deleted")
+            self.logging.debug(response)
+        except Exception:
+            self.logging.debug("Room deleted")
+
+
     def clean_username(self, name):
         name = str(name)
-        if "@cisco.com" in name:
-            name = name.split("@cisco.com")[0]
+        if "@" in name:
+            name = name.split("@", 1)[0]
+
         return name
 
-    def user_dict(self):
-        all_users = self.table.scan()
+    def get_all_ids(self):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        all_room_ids = self.table.scan()
 
-        return all_users
+        ids = []
+        for i in all_room_ids['Items']:
+            ids.append(i['room_id'])
 
-    def get_repositories(self):
-        self.table = self.dynamodb.Table('cidrbot_repos')
-        response = self.table.scan()
-        repo_list = ""
-        for repo in response['Items']:
-            repo_list += repo['Repositories'] + ","
-        repo_list = repo_list[:-1]
-        return repo_list.split(',')
+        self.logging.debug(ids)
+        return ids
 
-    def update_repo_list(self, name, request):
-        self.table = self.dynamodb.Table('cidrbot_repos')
+    def user_dict(self, room_id):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
+
+        return response['Items'][0]['users']
+
+    def get_repositories(self, room_id):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
+
+        repo_dict = response['Items'][0]['repos']
+        repo_list = []
+
+        for i in repo_dict:
+            repo_list.append(i)
+
+        return repo_list
+
+    def update_repo_list(self, name, request, room_id):
+        # If no repos exist, create the map first
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
+
         db_repo_name = None
-        response = self.table.query(KeyConditionExpression=Key('Repositories').eq(name))
+        if name in response['Items'][0]['repos']:
+            db_repo_name = name
 
-        if len(response['Items']) > 0:
-            db_repo_name = response['Items'][0]['Repositories']
+        if request == "add repo":
+            if db_repo_name is None:
+                self.table.update_item(
+                        Key={'room_id': room_id},
+                        UpdateExpression="set #repo.#reponame= :name",
+                        ExpressionAttributeNames={
+                            '#repo': 'repos',
+                            '#reponame' : name
+                        },
+                        ExpressionAttributeValues = {
+                            ':name': ''
+                            })
 
-        if request == "remove repo":
-            if db_repo_name is not None and db_repo_name == name:
-                self.table.delete_item(Key={'Repositories': name})
-                return f"Successfuly removed repo: {name}"
-            return f"Cannot find repo: {name}"
+                return f"Successfuly added repo: {name}"
 
-        if db_repo_name == name:
             return f"Repo: {name} already exists"
 
-        self.table.put_item(Item={'Repositories': name})
-        return f"Successfuly added repo: {name}"
+        if db_repo_name is not None:
+            self.table.update_item(
+                        Key={'room_id': room_id},
+                        UpdateExpression="REMOVE #repo.#reponame",
+                        ExpressionAttributeNames={
+                            '#repo': 'repos',
+                            '#reponame' : name
+                        })
+
+            return f"Successfuly removed repo: {name}"
+        return f"Cannot find repo: {name}"
 
     def get_notif_users(self):
-        response = self.table.scan(FilterExpression=Attr('reminders_enabled').eq('on'))
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        all_rooms = self.table.scan()
 
-        return response
+        return all_rooms
 
-    def get_user_info(self, name):
-        response = self.table.query(KeyConditionExpression=Key('User').eq(name))
+    # rework this, used for assigning issues
+    def get_user_info(self, name, room_id):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
-        return response
+        return response['Items'][0]['users'][name]
 
+    #Needed for the new user webhook
     def create_user(self, name, status, person_id, full_name):
+        # needs to check if attribute for map exists or not, if not create it
+
+        #Key={'room_id': room_id},
+            #            UpdateExpression="set #user.#username = :name",
+            ##            ExpressionAttributeNames={
+              #              '#user': 'users',
+              #              '#username' : name
+              #          },
+              #          ExpressionAttributeValues = {
+              #              ':name': { 'reminders_enabled' : 'on' , 'dup_status' : 'false'} (make sure dup status is a boolean)
+              #              })
+
+
+
         first_name = full_name.split(" ")[0].lower()
 
         response = self.table.scan()
@@ -104,10 +207,14 @@ class dynamoapi:
             if first_name == user['first_name']:
                 dup_status = True
                 self.table.update_item(
-                    Key={'User': user['User']},
+
+                Key={'User': user['User']},
                     UpdateExpression='SET dup_status = :dup',
-                    ExpressionAttributeValues={':dup': True}
+                    ExpressionAttributeValues={
+                            ':dup': True
+                        }
                 )
+
 
         self.table.put_item(
             Item={
@@ -119,35 +226,44 @@ class dynamoapi:
             }
         )
 
-    def update_user(self, name, status, person_id, full_name):
-        response = self.get_user_info(name)
-        self.logging.debug(status)
-        if len(response['Items']) == 0:
-            self.create_user(name, status, person_id, full_name)
-        else:
-            self.table.update_item(
-                Key={'User': name},
-                UpdateExpression='SET reminders_enabled = :status',
-                ExpressionAttributeValues={':status': status}
-            )
+    #This block "should" always run and be successful so the return at the end is okay for now, but linting might not like it
+    def update_user(self, name, status, person_id, room_id):
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
 
-            if response['Items'][0]['person_id'] is not person_id:
-                self.table.update_item(
-                    Key={'User': name},
-                    UpdateExpression='SET person_id = :id',
-                    ExpressionAttributeValues={':id': person_id}
-                )
+        for room in room_id:
+            response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room))
 
-        if status == "on":
-            return f"Reminders enabled for user: {name}"
-        return f"Reminders disabled for user: {name}"
+            if name in response['Items'][0]['users']:
+                if person_id in response['Items'][0]['users'][name]['person_id']:
+                    self.table.update_item(
+                        Key={'room_id': room},
+                        UpdateExpression="set #user.#username.#reminders = :name",
+                        ExpressionAttributeNames={
+                            '#user': 'users',
+                            '#username' : name,
+                            '#reminders' : 'reminders_enabled'
+                        },
+                        ExpressionAttributeValues = {
+                            ':name': status
+                            })
+                    self.logging.debug("updated")
 
+        return f"Successfully turned {status} reminders for {name}"
+
+
+    #Needs to be done for the webhook
     def delete_user(self, name):
         # Remove dup status if only 1 person remains with it
-        response = self.table.query(KeyConditionExpression=Key('User').eq(name))
+        response = self.table.query(
+            KeyConditionExpression=Key('User').eq(name))
 
         if len(response['Items']) > 0:
-            self.table.delete_item(Key={'User': name})
+            self.table.delete_item(
+                Key={
+                    'User': name
+                }
+            )
 
         all_users = self.table.scan()
         dup_counter = 0
@@ -163,6 +279,8 @@ class dynamoapi:
             if 0 < dup_counter < 2:
                 self.table.update_item(
                     Key={'User': user['User']},
-                    UpdateExpression='SET dup_status = :dup',
-                    ExpressionAttributeValues={':dup': False}
-                )
+                        UpdateExpression='SET dup_status = :dup',
+                        ExpressionAttributeValues={
+                                ':dup': False
+                            }
+                    )
