@@ -17,10 +17,6 @@ class dynamoapi:
         self.dynamodb = boto3.resource('dynamodb')
         self.table = self.dynamodb.Table('cidrbot-users-repos')
 
-    def get_dynamo_legacy_table(self):
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table('cidrbot_user_message_preferences')
-
     def create_room(self, room_id, members, id_list):
         self.get_dynamo()
         self.table.put_item(Item={'room_id': room_id, 'users': {}, 'repos': {}, 'webhook_ids': id_list})
