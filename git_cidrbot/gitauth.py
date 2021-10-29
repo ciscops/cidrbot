@@ -158,7 +158,7 @@ class gitauth:
         URL = f'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        response = requests.post(URL, json=post_data, headers=headers)
+        requests.post(URL, json=post_data, headers=headers)
 
     def add_installation(self, user_id, install_id, person_id, room_id, token):
         self.dynamodb = boto3.resource('dynamodb')
