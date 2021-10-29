@@ -11,7 +11,7 @@ import requests
 class gitauth:
     def __init__(self):
         # Initialize logging
-        logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
+        logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
         self.logging = logging.getLogger()
 
         if "CLIENTID" in os.environ:
