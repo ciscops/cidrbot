@@ -159,15 +159,6 @@ class gitauth:
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
         response = requests.post(URL, json=post_data, headers=headers)
-        if response.status_code == 200:
-            self.logging.debug("Message created successfully")
-            self.logging.debug(str(response.text))
-            resp = json.loads(str(response.text))
-            return resp["id"]
-
-        self.logging.debug(str(response.status_code))
-        self.logging.debug(str(response.text))
-        return "no id"
 
     def add_installation(self, user_id, install_id, person_id, room_id, token):
         self.dynamodb = boto3.resource('dynamodb')
