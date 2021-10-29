@@ -99,8 +99,6 @@ class gitauth:
                             token, f'https://api.github.com/user/installations/{install_id}/repositories'
                         )
                         user_info = self.git_user_info(token, f'https://api.github.com/user')
-                        self.logging.debug(repo_info)
-                        self.logging.debug(user_info)
 
                         repo_info_dict = json.loads(repo_info)
                         user_info_dict = json.loads(user_info)
@@ -149,7 +147,6 @@ class gitauth:
         response = session.get(URL, headers=headers)
         if response.status_code == 200:
             self.logging.debug("Git user info retrieved")
-            self.logging.debug(str(response.text))
             resp = response.text
             return resp
 
@@ -225,7 +222,6 @@ class gitauth:
         response = requests.post(URL, json=post_data, headers=headers)
         if response.status_code == 200:
             self.logging.debug("Access key granted")
-            self.logging.debug(str(response.text))
             resp = str(response.text)
             return resp
 
