@@ -3,7 +3,10 @@ import os
 import sys
 import base64
 import json
+from webexteamssdk import WebexTeamsAPI
 import re
+import random
+import string
 from datetime import datetime
 import boto3
 import requests
@@ -20,11 +23,11 @@ class githandler:
         self.logging = logging.getLogger()
 
         # Initialize Aws secrets information
-        if "SECRET_NAME" in os.environ:
-            self.secret_name = os.getenv("SECRET_NAME")
-        else:
-            logging.error("Environment variable SECRET_NAME must be set")
-            sys.exit(1)
+        #if "SECRET_NAME" in os.environ:
+        #    self.secret_name = os.getenv("SECRET_NAME")
+        #else:
+        #    logging.error("Environment variable SECRET_NAME must be set")
+        #    sys.exit(1)
 
         if "REGION_NAME" in os.environ:
             self.region_name = os.getenv("REGION_NAME")
@@ -32,13 +35,20 @@ class githandler:
             logging.error("Environment variable REGION_NAME must be set")
             sys.exit(1)
 
-        if "SECRET_KEY" in os.environ:
-            self.secret_key = os.getenv("SECRET_KEY")
+        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
+            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
-            logging.error("Environment variable SECRET_KEY must be set")
+            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        #if "SECRET_KEY" in os.environ:
+        ##    self.secret_key = os.getenv("SECRET_KEY")
+        ##else:
+         #   logging.error("Environment variable SECRET_KEY must be set")
+         #   sys.exit(1)
+
         # Init sibling py files and used global vars
+        self.Api = WebexTeamsAPI()
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
         self.user_search_name = ""
@@ -92,10 +102,13 @@ class githandler:
                     for i in issue['requested_reviewers']:
                         reviewer += i['login'] + ', '
 
+
             if 'review_comments_url' in issue:
                 review_url = issue['url'] + "/reviews"
                 self.logging.debug(issue)
-                review = self.session.get(review_url, headers=self.headers)
+                review = self.session.get(
+                review_url, headers=self.headers
+                )
                 self.logging.debug(review.json())
                 review_json = review.json()
 
@@ -214,9 +227,7 @@ class githandler:
             all_issues = self.session.get(
                 'https://api.github.com/repos/' + repository + '/issues?state=open', headers=self.headers
             )
-            all_prs = self.session.get(
-                'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers
-            )
+            all_prs = self.session.get('https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers)
 
             for pr in all_prs.json():
                 number = pr['number']
@@ -270,7 +281,8 @@ class githandler:
         self.session = requests.Session()
         self.headers = {'Authorization': 'token ' + self.token}
 
-        user = self.session.get('https://api.github.com/users/' + name, headers=self.headers)
+        user = self.session.get(
+                'https://api.github.com/users/' + name , headers=self.headers)
 
         json_str = user.json()
 
@@ -285,7 +297,8 @@ class githandler:
             self.session = requests.Session()
             self.headers = {'Authorization': 'token ' + self.token}
 
-            repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers)
+            repo = self.session.get(
+                    'https://api.github.com/repos/' + repo_name , headers=self.headers)
 
             json_str = repo.json()
 
@@ -294,6 +307,26 @@ class githandler:
                     return True
             return False
         return False
+
+    def send_auth_link(self, person_id, room_id, pt_id):
+        link = "https://github.com/apps/cidrbot/installations/new?state="
+        state_value = {"personId" : person_id, "roomId" : room_id, "ptId" : pt_id}
+        state = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k = 26))
+
+        message = f'<a href="{link + state}">Click here</a>'
+        room = self.Api.rooms.get(room_id)
+        room_name = room.title
+
+        message += f" to authenticate a repo to Room: {room_name}. \n -Remember that this grants all members in the room access to your repo via bot commands"
+        self.logging.debug("Sending auth link to " + str(person_id))
+        self.logging.debug("Message = " + str(message))
+        self.logging.debug("Link = " + str(link))
+        self.logging.debug("State = " + str(state))
+
+
+        self.dynamo.add_auth_request(state, state_value, room_id)
+        self.Api.messages.create(toPersonId=person_id, markdown=message)
 
     def issue_details(self, text):
         self.get_git_key()
@@ -313,6 +346,7 @@ class githandler:
                     issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
                 except Exception:
                     return f"Could not locate issue, Error: **invalid repo/issue combination**"
+
 
                 issue_json = issue.raw_data
                 if 'pull_request' not in issue_json:
@@ -340,8 +374,8 @@ class githandler:
 
                 updated_time = issue_json['updated_at']
                 created_time = issue_json['created_at']
-                date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
-                date_created = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
+                date = datetime.strptime(updated_time,"%Y-%m-%dT%H:%M:%SZ")
+                date_created = datetime.strptime(created_time,"%Y-%m-%dT%H:%M:%SZ")
 
                 timespan = datetime.today() - date
                 timespan_created = datetime.today() - date_created
@@ -363,9 +397,10 @@ class githandler:
                 line3 = f"{created}   {spacer}   {last_seen}   {spacer}   State: {issue.state} "
 
                 return (
-                    f"{issue_type} #{issue.number}: {hyperlink_format} \n" + f"- {line1}  \n" + f"- {line2}  \n" +
-                    f"- {line3}  \n"
-                )
+                    f"{issue_type} #{issue.number}: {hyperlink_format} \n" +
+                    f"- {line1}  \n" +
+                    f"- {line2}  \n" +
+                    f"- {line3}  \n" )
 
             return f"Issue number invalid"
         return f"Repo name invalid"

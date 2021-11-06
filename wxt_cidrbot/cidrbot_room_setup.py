@@ -8,7 +8,6 @@ from wxt_cidrbot import cmd_list
 from wxt_cidrbot import dynamo_api_handler
 from wxt_cidrbot import webex_edit_message
 
-
 class room_setup:
     def __init__(self):
         # Initialize logging
@@ -63,15 +62,11 @@ class room_setup:
                         member_list.append(user_email)
                         dup = True
 
-                    member_info.append({
-                        'user_email': user_email,
-                        'first_name': name,
-                        'duplicate': dup,
-                        'person_id': person_id
-                    })
+                    member_info.append({'user_email': user_email, 'first_name': name, 'duplicate': dup, 'person_id': person_id})
 
             text = f"Hello, thank you for adding cidrbot to your room, one moment while I set things up: \n - Setting up webhooks..."
-            post_message = {'roomId': room_id, 'markdown': text}
+            post_message = {'roomId' : room_id,
+                     'markdown' : text}
 
             message_id = self.post_message(post_message)
 
@@ -81,36 +76,31 @@ class room_setup:
             id_list = self.webex_webhook_setup(room_id)
             self.dynamo.create_room(room_id, member_info, id_list)
 
-            text += f"\n - Room setup complete \n\n To begin using cidrbot's github features, type **@CIDRbot add repo** \n For a list of commands type **@CIDRbot help**"
+            text += f"\n - Room setup complete \n\n To begin type **@CIDRbot manage repos** \n For a list of commands type **@CIDRbot help**"
             self.webex.edit_message(message_id, text, room_id)
 
     def webex_webhook_setup(self, room_id):
         room_filter = "roomId=" + room_id
         id_list = []
 
-        post_data_message = {
-            'name': "Message",
-            'targetUrl': self.targetURL,
-            'resource': "messages",
-            'event': "created",
-            'filter': room_filter
-        }
+        #for webhook generating, add a secret to the webhooks
+        post_data_message = {'name' : "Message",
+                     'targetUrl' : self.targetURL,
+                     'resource' : "messages",
+                     'event' : "created",
+                     'filter' : room_filter}
 
-        post_data_new = {
-            'name': "New user",
-            'targetUrl': self.targetURL,
-            'resource': "memberships",
-            'event': "created",
-            'filter': room_filter
-        }
+        post_data_new = {'name' : "New user",
+                     'targetUrl' : self.targetURL,
+                     'resource' : "memberships",
+                     'event' : "created",
+                     'filter' : room_filter}
 
-        post_data_left = {
-            'name': "User left",
-            'targetUrl': self.targetURL,
-            'resource': "memberships",
-            'event': "deleted",
-            'filter': room_filter
-        }
+        post_data_left = {'name' : "User left",
+                     'targetUrl' : self.targetURL,
+                     'resource' : "memberships",
+                     'event' : "deleted",
+                     'filter' : room_filter}
 
         id_message = self.post_webhook(post_data_message)
         id_new_user = self.post_webhook(post_data_new)
@@ -123,7 +113,8 @@ class room_setup:
 
     def post_webhook(self, post_data):
         URL = f'https://webexapis.com/v1/webhooks'
-        headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
+        headers = {'Authorization': 'Bearer ' + self.wxt_access_token,
+                   'Content-type': 'application/json;charset=utf-8'}
 
         response = requests.post(URL, json=post_data, headers=headers)
         if response.status_code == 200:
@@ -138,7 +129,8 @@ class room_setup:
 
     def post_message(self, post_data):
         URL = f'https://webexapis.com/v1/messages'
-        headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
+        headers = {'Authorization': 'Bearer ' + self.wxt_access_token,
+                   'Content-type': 'application/json;charset=utf-8'}
 
         response = requests.post(URL, json=post_data, headers=headers)
         if response.status_code == 200:

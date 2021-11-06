@@ -11,7 +11,7 @@ import requests
 class gitauth:
     def __init__(self):
         # Initialize logging
-        logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+        logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
         if "CLIENTID" in os.environ:
@@ -104,24 +104,32 @@ class gitauth:
                         user_info_dict = json.loads(user_info)
 
                         user_id = user_info_dict['id']
+                        user_name = user_info_dict['login']
                         count = repo_info_dict['total_count']
+                        repo_path_list = []
+
                         repo_list = ''
                         i = 0
                         while i < count:
                             repo_full_name = repo_info_dict['repositories'][i]['full_name']
-
+                            repo_path_list.append(repo_full_name)
                             Repo_hypr_lnk = f'<a href="{"https://github.com/" + repo_full_name}">{repo_full_name}</a>'
-                            repo_list += Repo_hypr_lnk + ", "
+                            repo_list += " - " + Repo_hypr_lnk + " \n "
                             i += 1
 
-                        text_direct = f"Authentication successful, added {repo_list} to {room_name}"
-                        text = f"{repo_list} added, you can now interact with github in the following format: **@CIDRbot list issues in repoPath/repoName**"
+                        text_direct = f"Authentication successful, the following repos are added to room: {room_name} \n" + repo_list
+                        text = (
+                            f"Authentication successful, type @CIDRbot help to begin. To add repos, please" +
+                            ''' visit <a href="https://github.com/settings/installations/">Github applications</a> and click "configure" for the cidrbot app '''
+                        )
 
                         post_direct_message = {'toPersonId': person_id, 'markdown': text_direct}
 
                         post_message = {'roomId': room_id, 'parentId': pt_id, 'markdown': text}
 
-                        self.add_installation(str(user_id), install_id, person_id, room_id, token)
+                        self.add_installation(
+                            str(user_id), install_id, person_id, user_name, room_id, token, repo_path_list
+                        )
                         self.send_webex_message(post_direct_message)
                         self.send_webex_message(post_message)
 
@@ -160,19 +168,43 @@ class gitauth:
 
         requests.post(URL, json=post_data, headers=headers)
 
-    def add_installation(self, user_id, install_id, person_id, room_id, token):
+    def add_installation(self, user_id, install_id, person_id, user_name, room_id, token, repo_path_list):
         self.dynamodb = boto3.resource('dynamodb')
         self.table = self.dynamodb.Table('active_github_installations')
 
         self.table.put_item(
             Item={
-                'user_id': user_id,
                 'installation_id': install_id,
+                'user_id': user_id,
+                'user_name': user_name,
                 'person_id': person_id,
                 'room_id': room_id,
                 'access_token': token
             }
         )
+
+        self.table = self.dynamodb.Table('cidrbot-users-repos')
+
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        current_repos = response['Items'][0]['repos']
+
+        for repo in repo_path_list:
+            db_repo_name = None
+
+            if repo in current_repos:
+                db_repo_name = repo
+
+            if db_repo_name is None:
+                self.table.update_item(
+                    Key={'room_id': room_id},
+                    UpdateExpression="set #repo.#reponame= :name",
+                    ExpressionAttributeNames={
+                        '#repo': 'repos',
+                        '#reponame': repo
+                    },
+                    ExpressionAttributeValues={':name': token}
+                )
 
     def check_state(self, state):
         self.dynamodb = boto3.resource('dynamodb')

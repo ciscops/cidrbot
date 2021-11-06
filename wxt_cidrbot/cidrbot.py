@@ -51,7 +51,8 @@ class cidrbot:
         id_list = self.dynamo.get_all_ids()
 
         for room_id in id_list:
-            message = self.git_handle.scan_repos("List", 'All', self.dynamo.get_repositories(room_id), False)
+            message = self.git_handle.scan_repos("List", 'All',
+                self.dynamo.get_repositories(room_id), False)
 
             self.logging.debug("sending message to " + room_id + "message " + message)
             self.send_wbx_msg(self.roomID, message, None)
@@ -65,8 +66,7 @@ class cidrbot:
 
         for room in remind_users['Items']:
             assigned_issues_dict = self.git_handle.scan_repos(
-                "Dict", 'All', self.dynamo.get_repositories(room['room_id']), False
-            )
+                "Dict", 'All', self.dynamo.get_repositories(room['room_id']), False)
 
             room_info = self.Api.rooms.get(room['room_id'])
             room_name = room_info.title
@@ -85,10 +85,8 @@ class cidrbot:
                             message = f"Room: {room_name} \n"
                             message += text + '\n'
                         else:
-                            message = (
-                                f"**Weekly reminder to review your issues**, " +
-                                f" -To disable these messages, type: **disable reminders** \n \n Room: {room_name} \n"
-                            )
+                            message = (f"**Weekly reminder to review your issues**, " +
+                            f" -To disable these messages, type: **disable reminders** \n \n Room: {room_name} \n")
                             message += text + '\n'
 
                         self.send_directwbx_msg(room['users'][user]['person_id'], message)
@@ -146,7 +144,7 @@ class cidrbot:
                 self.dynamo.delete_user(webex_msg_sender, self.roomID)
 
         elif webex_msg_sender != "CIDRBot@webex.bot":
-            self.message_event(json_string, event_type, webex_msg_sender)
+            self.message_event(json_string, event_type, webex_msg_sender) 
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id):
@@ -169,7 +167,8 @@ class cidrbot:
         text = message.text
 
         self.get_command.user_email_payload(
-            webex_msg_sender, webex_sender_id, self.Api.memberships.list(roomId=self.roomID, personId=webex_sender_id)
+            webex_msg_sender, webex_sender_id,
+            self.Api.memberships.list(roomId=self.roomID, personId=webex_sender_id)
         )
 
         if event_type == "Message":

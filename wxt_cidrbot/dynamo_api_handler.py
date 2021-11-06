@@ -17,9 +17,22 @@ class dynamoapi:
         self.dynamodb = boto3.resource('dynamodb')
         self.table = self.dynamodb.Table('cidrbot-users-repos')
 
+    def add_auth_request(self, state, state_value, room_id):
+        self.get_dynamo()
+        self.table.update_item(
+                    Key={'room_id': room_id},
+                    UpdateExpression="set #auth.#userauth= :name",
+                    ExpressionAttributeNames={
+                        '#auth': 'auth_requests',
+                        '#userauth' : state
+                    },
+                    ExpressionAttributeValues = {
+                        ':name': state_value
+                        })
+
     def create_room(self, room_id, members, id_list):
         self.get_dynamo()
-        self.table.put_item(Item={'room_id': room_id, 'users': {}, 'repos': {}, 'webhook_ids': id_list})
+        self.table.put_item(Item={'room_id':room_id, 'users' : {}, 'repos' : {}, 'webhook_ids' : id_list, 'auth_requests' : {}})
 
         for member in members:
             email = member['user_email']
@@ -28,35 +41,32 @@ class dynamoapi:
             person_id = member['person_id']
 
             self.table.update_item(
-                Key={'room_id': room_id},
-                UpdateExpression="set #user.#username= :name",
-                ExpressionAttributeNames={
-                    '#user': 'users',
-                    '#username': email
-                },
-                ExpressionAttributeValues={
-                    ':name': {
-                        'reminders_enabled': 'off',
-                        'dup_status': dup_status,
-                        'first_name': first_name,
-                        'person_id': person_id
-                    }
-                }
-            )
+                        Key={'room_id': room_id},
+                        UpdateExpression="set #user.#username= :name",
+                        ExpressionAttributeNames={
+                            '#user': 'users',
+                            '#username' : email
+                        },
+                        ExpressionAttributeValues = {
+                            ':name': { 'reminders_enabled' :  'off', 'dup_status' :  dup_status, 'first_name' : first_name, 'person_id' : person_id}
+                            })
 
             self.logging.debug("added user")
             self.logging.debug(email)
+
 
     def delete_room(self, room_id):
         self.get_dynamo()
         self.table.delete_item(Key={'room_id': room_id})
 
         try:
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            response = self.table.query(
+                KeyConditionExpression=Key('room_id').eq(room_id))
             self.logging.debug("Room could not be deleted")
             self.logging.debug(response)
         except Exception:
             self.logging.debug("Room deleted")
+
 
     def clean_username(self, name):
         name = str(name)
@@ -78,20 +88,23 @@ class dynamoapi:
 
     def user_dict(self, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]['users']
 
     def get_webhooks(self, room_id):
         self.get_dynamo()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]['webhook_ids']
 
     def get_repositories(self, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         repo_dict = response['Items'][0]['repos']
         repo_list = []
@@ -104,7 +117,8 @@ class dynamoapi:
     def update_repo_list(self, name, request, room_id):
         self.get_dynamo()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         db_repo_name = None
         if name in response['Items'][0]['repos']:
@@ -113,14 +127,15 @@ class dynamoapi:
         if request == "add repo":
             if db_repo_name is None:
                 self.table.update_item(
-                    Key={'room_id': room_id},
-                    UpdateExpression="set #repo.#reponame= :name",
-                    ExpressionAttributeNames={
-                        '#repo': 'repos',
-                        '#reponame': name
-                    },
-                    ExpressionAttributeValues={':name': ''}
-                )
+                        Key={'room_id': room_id},
+                        UpdateExpression="set #repo.#reponame= :name",
+                        ExpressionAttributeNames={
+                            '#repo': 'repos',
+                            '#reponame' : name
+                        },
+                        ExpressionAttributeValues = {
+                            ':name': ''
+                            })
 
                 return f"Successfuly added repo: {name}"
 
@@ -128,13 +143,12 @@ class dynamoapi:
 
         if db_repo_name is not None:
             self.table.update_item(
-                Key={'room_id': room_id},
-                UpdateExpression="REMOVE #repo.#reponame",
-                ExpressionAttributeNames={
-                    '#repo': 'repos',
-                    '#reponame': name
-                }
-            )
+                        Key={'room_id': room_id},
+                        UpdateExpression="REMOVE #repo.#reponame",
+                        ExpressionAttributeNames={
+                            '#repo': 'repos',
+                            '#reponame' : name
+                        })
 
             return f"Successfuly removed repo: {name}"
         return f"Cannot find repo: {name}"
@@ -149,7 +163,8 @@ class dynamoapi:
         self.get_dynamo()
         name = self.clean_username(name)
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]['users'][name]
 
@@ -159,46 +174,43 @@ class dynamoapi:
 
         first_name = full_name.split(" ")[0].lower()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         dup_status = False
         for user in response['Items'][0]['users']:
             if response['Items'][0]['users'][user]['first_name'] == first_name:
                 dup_status = True
                 self.table.update_item(
-                    Key={'room_id': room_id},
-                    UpdateExpression="set #user.#username.#dup= :name",
-                    ExpressionAttributeNames={
-                        '#user': 'users',
-                        '#username': name,
-                        '#dup': 'dup_status'
-                    },
-                    ExpressionAttributeValues={':name': dup_status}
-                )
+                        Key={'room_id': room_id},
+                        UpdateExpression="set #user.#username.#dup= :name",
+                        ExpressionAttributeNames={
+                            '#user': 'users',
+                            '#username' : name,
+                            '#dup' : 'dup_status'
+                        },
+                        ExpressionAttributeValues = {
+                            ':name': dup_status
+                            })
 
         self.table.update_item(
             Key={'room_id': room_id},
             UpdateExpression="set #user.#username= :name",
             ExpressionAttributeNames={
                 '#user': 'users',
-                '#username': name
+                '#username' : name
             },
-            ExpressionAttributeValues={
-                ':name': {
-                    'reminders_enabled': 'off',
-                    'dup_status': dup_status,
-                    'first_name': first_name,
-                    'person_id': person_id
-                }
-            }
-        )
+            ExpressionAttributeValues = {
+                ':name': { 'reminders_enabled' :  'off', 'dup_status' :  dup_status, 'first_name' : first_name, 'person_id' : person_id}
+                })
 
     def update_user(self, name, status, person_id, room_id):
         self.get_dynamo()
         name = self.clean_username(name)
 
         for room in room_id:
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room))
+            response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room))
 
             if name in response['Items'][0]['users']:
                 if person_id in response['Items'][0]['users'][name]['person_id']:
@@ -207,11 +219,12 @@ class dynamoapi:
                         UpdateExpression="set #user.#username.#reminders = :name",
                         ExpressionAttributeNames={
                             '#user': 'users',
-                            '#username': name,
-                            '#reminders': 'reminders_enabled'
+                            '#username' : name,
+                            '#reminders' : 'reminders_enabled'
                         },
-                        ExpressionAttributeValues={':name': status}
-                    )
+                        ExpressionAttributeValues = {
+                            ':name': status
+                            })
                     self.logging.debug("updated")
 
         return f"Successfully turned {status} reminders for {name}"
@@ -220,27 +233,27 @@ class dynamoapi:
         self.get_dynamo()
         name = self.clean_username(name)
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
 
         if len(response['Items'][0]['users'][name]['first_name']) > 0:
 
             self.table.update_item(
-                Key={'room_id': room_id},
-                UpdateExpression="REMOVE #user.#username",
-                ExpressionAttributeNames={
-                    '#user': 'users',
-                    '#username': name
-                }
-            )
+                        Key={'room_id': room_id},
+                        UpdateExpression="REMOVE #user.#username",
+                        ExpressionAttributeNames={
+                            '#user': 'users',
+                            '#username' : name
+                        })
 
-            response_check = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            response_check = self.table.query(
+                KeyConditionExpression=Key('room_id').eq(room_id))
 
             dup_counter = 0
 
             user = ''
             for user in response_check['Items'][0]['users']:
-                if response['Items'][0]['users'][name]['first_name'] == response_check['Items'][0]['users'][user][
-                    'first_name']:
+                if response['Items'][0]['users'][name]['first_name'] == response_check['Items'][0]['users'][user]['first_name']:
                     if name != user:
                         dup_counter += 1
 
@@ -251,8 +264,9 @@ class dynamoapi:
                         UpdateExpression="set #user.#username.#dup= :name",
                         ExpressionAttributeNames={
                             '#user': 'users',
-                            '#username': user,
-                            '#dup': 'dup_status'
+                            '#username' : user,
+                            '#dup' : 'dup_status'
                         },
-                        ExpressionAttributeValues={':name': False}
-                    )
+                        ExpressionAttributeValues = {
+                            ':name': False
+                            })
