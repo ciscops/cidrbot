@@ -33,16 +33,16 @@ class gitauth:
             logging.error("Environment variable CALLBACKURL must be set")
             sys.exit(1)
 
-        if "WEBEX_BOT_ID" in os.environ:
-            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
-        else:
-            logging.error("Environment variable WEBEX_BOT_ID must be set")
-            sys.exit(1)
-
         if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
             self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
+            sys.exit(1)    
+
+        if "WEBEX_BOT_ID" in os.environ:
+            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
+        else:
+            logging.error("Environment variable WEBEX_BOT_ID must be set")
             sys.exit(1)
 
         if "DYNAMODB_ROOM_TABLE" in os.environ:
@@ -51,17 +51,19 @@ class gitauth:
             logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
             sys.exit(1)
 
+        if "DYNAMODB_AUTH_TABLE" in os.environ:
+            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
+            sys.exit(1)
+
         if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
             self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
         else:
             logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
             sys.exit(1)
 
-        if "DYNAMODB_AUTH_TABLE" in os.environ:
-            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
-        else:
-            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
-            sys.exit(1)
+
 
         self.dynamodb = ""
         self.table = ''
