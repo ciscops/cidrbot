@@ -6,6 +6,7 @@ import json
 from webexteamssdk import WebexTeamsAPI
 import re
 import random
+import secrets
 import string
 from datetime import datetime
 import boto3
@@ -268,19 +269,15 @@ class githandler:
     def send_auth_link(self, person_id, room_id, pt_id):
         link = "https://github.com/apps/cidrbot/installations/new?state="
         state_value = {"personId" : person_id, "roomId" : room_id, "ptId" : pt_id}
-        state = ''.join(random.choices(string.ascii_uppercase +
-                             string.digits, k = 26))
+
+        alphabet = string.ascii_letters + string.digits
+        state = ''.join(secrets.choice(alphabet) for i in range(26))
 
         message = f'<a href="{link + state}">Click here</a>'
         room = self.Api.rooms.get(room_id)
         room_name = room.title
 
         message += f" to authenticate a repo to Room: {room_name}. \n -Remember that this grants all members in the room access to your repo via bot commands"
-        self.logging.debug("Sending auth link to " + str(person_id))
-        self.logging.debug("Message = " + str(message))
-        self.logging.debug("Link = " + str(link))
-        self.logging.debug("State = " + str(state))
-
 
         self.dynamo.add_auth_request(state, state_value, room_id)
         self.Api.messages.create(toPersonId=person_id, markdown=message)
@@ -455,4 +452,3 @@ class githandler:
         elif assign_status == "unassign":
             issue.delete_review_request(reviewers=[search_name])
             return f"Pull request: {hyperlink_format} successfully unassigned from " + name_sim
-        

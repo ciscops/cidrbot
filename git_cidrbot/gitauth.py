@@ -131,7 +131,7 @@ class gitauth:
                         i = 0
                         while i < count:
                             repo_full_name = repo_info_dict['repositories'][i]['full_name']
-                            repo_path_list.append(repo_full_name)
+                            repo_path_list.append(repo_full_name.lower())
                             Repo_hypr_lnk = f'<a href="{"https://github.com/" + repo_full_name}">{repo_full_name}</a>'
                             repo_list += " - " + Repo_hypr_lnk + " \n "
                             i += 1

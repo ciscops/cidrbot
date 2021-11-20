@@ -212,6 +212,9 @@ Parameters:
   apiName:
     Type: String
     Default: cidrbot-api
+  securityPolicyName:
+    Type: String
+    Default: ''
   securityGroupId:
     Type: String
     Default: ''
@@ -394,6 +397,7 @@ Resources:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
       DomainName: !Ref lambdaDomainName
+      SecurityPolicy: !Ref securityPolicyName
       DomainNameConfigurations:
         - EndpointType: REGIONAL
           CertificateArn: !Ref lambdaAcmCert

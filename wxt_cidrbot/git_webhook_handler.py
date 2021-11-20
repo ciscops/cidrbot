@@ -48,7 +48,7 @@ class gitwebhook:
         json_string = json.loads((event["body"]))
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
-        github_login_id = json_string['installation']['account']['id']
+        github_login_id = json_string['sender']['id']
 
         if event_action == 'added' or event_action == 'removed':
             event_info = self.check_installation(installation_id, github_login_id)
@@ -102,7 +102,7 @@ class gitwebhook:
 
 
     def edit_repo(self, room_id, repo, token, request):
-
+        repo = repo.lower()
         if request == "add":
             response = self.table.query(
                 KeyConditionExpression=Key('room_id').eq(room_id))
