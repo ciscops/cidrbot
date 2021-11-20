@@ -22,6 +22,12 @@ def lambda_handler(event, handle):
         logging.error("Environment variable GITHUB_WEBHOOK_PATH must be set")
         sys.exit(1)
 
+    if "BASE_WEBHOOK_PATH" in os.environ:
+        base_webhook_path = os.getenv("BASE_WEBHOOK_PATH")
+    else:
+        logging.error("Environment variable BASE_WEBHOOK_PATH must be set")
+        sys.exit(1)
+
     cidr = cidrbot()
     git = gitwebhook()
     # Determine the type of event and execute the correct function
@@ -34,7 +40,7 @@ def lambda_handler(event, handle):
         cidr.send_timed_msg()
     elif event.get("Type") == "Weekly Timer":
         cidr.weekly_reminder_email()
-    elif path == '/ppajersk-cidrbot':
+    elif path == base_webhook_path:
         cidr.webhook_request(event)
     end_time = datetime.datetime.now()
     logger.debug('Script complete, total runtime {%s - %s}', end_time, start_time)

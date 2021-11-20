@@ -224,6 +224,9 @@ Parameters:
   lambdaExecutionRole:
     Type: String
     Default: ''
+  baseWebhookPath:
+    Type: String
+    Default: '' 
   githubWebhookPath:
     Type: String
     Default: ''
@@ -290,6 +293,7 @@ Resources:
       Environment:
         Variables:
           GITHUB_WEBHOOK_PATH: !Ref githubWebhookPath
+          BASE_WEBHOOK_PATH: !Ref baseWebhookPath
           DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
           DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
           DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
