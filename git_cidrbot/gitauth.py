@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import json
+import time
 import boto3
 from boto3.dynamodb.conditions import Key
 from webexteamssdk import WebexTeamsAPI
@@ -44,6 +45,24 @@ class gitauth:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if "DYNAMODB_ROOM_TABLE" in os.environ:
+            self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
+            sys.exit(1)
+
+        if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
+            self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
+            sys.exit(1)
+
+        if "DYNAMODB_AUTH_TABLE" in os.environ:
+            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
+            sys.exit(1)
+
         self.dynamodb = ""
         self.table = ''
         self.Api = WebexTeamsAPI()
@@ -84,9 +103,9 @@ class gitauth:
                         self.logging.debug("Success the state matches and the payload was true")
                         #self.logging.debug(str(payload) + " " + str(state) + " " + str(state_status))
 
-                        person_id = state_status['personId']
-                        room_id = state_status['roomId']
-                        pt_id = state_status['ptId']
+                        person_id = state_status[0]['personId']
+                        room_id = state_status[0]['roomId']
+                        pt_id = state_status[0]['ptId']
 
                         room = self.Api.rooms.get(room_id)
                         room_name = room.title
@@ -137,7 +156,20 @@ class gitauth:
                         return None
 
                     self.logging.debug("Bad state, no open requests")
-                    return None
+                    return {
+                        "statusCode":
+                        302,
+                        "headers": {
+                            "Content-Type": "application/json",
+                            "Refresh": "15; url=https://github.com/apps/cidrbot"
+                        },
+                        "body":
+                        json.dumps({
+                            f"Expired link was used":
+                            "Please uninstall cidrbot app and follow the process " +
+                            "described by the page you will be redirected to. REDIRECTING IN 15 SECONDS"
+                        })
+                    }
 
                 self.logging.debug("Bad payload can't contact github")
                 return None
@@ -170,7 +202,7 @@ class gitauth:
 
     def add_installation(self, user_id, install_id, person_id, user_name, room_id, token, repo_path_list):
         self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table('active_github_installations')
+        self.table = self.dynamodb.Table(self.db_installation_name)
 
         self.table.put_item(
             Item={
@@ -183,7 +215,7 @@ class gitauth:
             }
         )
 
-        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        self.table = self.dynamodb.Table(self.db_room_name)
 
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
@@ -208,26 +240,22 @@ class gitauth:
 
     def check_state(self, state):
         self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table('cidrbot-users-repos')
-
-        all_room_ids = self.table.scan()
-
+        self.table = self.dynamodb.Table(self.db_auth_name)
         state_condition = False
-        for i in all_room_ids['Items']:
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(i['room_id']))
-            if state in response['Items'][0]['auth_requests']:
-                state_condition = response['Items'][0]['auth_requests'][state]
 
-                self.table.update_item(
-                    Key={'room_id': i['room_id']},
-                    UpdateExpression="REMOVE #auth.#userauth",
-                    ExpressionAttributeNames={
-                        '#auth': 'auth_requests',
-                        '#userauth': state
-                    }
-                )
+        current_time = int(time.time())
 
-                break
+        try:
+            response = self.table.query(KeyConditionExpression=Key('state').eq(state))
+
+            self.logging.debug(current_time)
+            self.logging.debug(response['Items'][0]['ttl'])
+            if current_time < int(response['Items'][0]['ttl']):
+                state_condition = response['Items']
+        except Exception:
+            pass
+
+        self.table.delete_item(Key={'state': state})
 
         return state_condition
 

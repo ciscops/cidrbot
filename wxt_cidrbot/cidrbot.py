@@ -29,6 +29,12 @@ class cidrbot:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if 'ORGANIZATION_ID' in os.environ:
+            self.orgID = os.getenv("ORGANIZATION_ID")
+        else:
+            logging.error("Environment variable ORGANIZATION_ID must be set")
+            sys.exit(1)
+
         # Initialize Api
         self.Api = WebexTeamsAPI()
 
@@ -99,6 +105,7 @@ class cidrbot:
         webex_msg_sender = json_string['data']['personEmail']
         event_type = json_string['name']
         user_id = json_string['data']['personId']
+        org_id = json_string['orgId']
         self.roomID = json_string['data']['roomId']
 
         if event_type == "New user":
@@ -144,7 +151,9 @@ class cidrbot:
                 self.dynamo.delete_user(webex_msg_sender, self.roomID)
 
         elif webex_msg_sender != "CIDRBot@webex.bot":
-            self.message_event(json_string, event_type, webex_msg_sender) 
+            if org_id == self.orgID:
+                self.message_event(json_string, event_type, webex_msg_sender)
+
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id):
@@ -207,3 +216,4 @@ class cidrbot:
             if verify_membership is not None:
                 text = self.get_command.message_handler(text, event_type, room_id_list, None)
                 self.send_wbx_msg(self.roomID, text, None)
+           

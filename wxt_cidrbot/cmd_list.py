@@ -179,7 +179,8 @@ class cmdlist:
                 for user in self.webex_mod_status:
                     if user.isModerator:
                         self.git_handle.send_auth_link(self.user_person_id, room_id, pt_id)
-                        return "Check direct messages to complete Github authentication"    
+                        return "Check direct messages to complete Github authentication"
+
                     return "That command is only avaliable to space moderators"
             else:
                 return "That command is only avaliable for moderators in the chatroom"

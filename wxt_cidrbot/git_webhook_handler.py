@@ -26,6 +26,18 @@ class gitwebhook:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if "DYNAMODB_ROOM_TABLE" in os.environ:
+            self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
+            sys.exit(1)
+
+        if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
+            self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
+            sys.exit(1)
+
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.Api = WebexTeamsAPI()
         self.dynamodb = ""
@@ -63,19 +75,19 @@ class gitwebhook:
                     message_remove_repo += f" - " + repo + "\n"
                     self.edit_repo(room_id, repo, token, "remove")
 
-            if user_reminders['reminders_enabled'] == 'on':
-                person_id = user_reminders['person_id']
-                room = self.Api.rooms.get(room_id)
-                room_name = room.title
 
-                message = f"Repos updated for room: {room_name} \n"
+            person_id = user_reminders['person_id']
+            room = self.Api.rooms.get(room_id)
+            room_name = room.title
 
-                if len(message_add_repo) > 0:
-                    message += f"**Added:**\n" + message_add_repo
-                if len(message_remove_repo) > 0:
-                    message += f"**Removed:**\n"+ message_remove_repo
+            message = f"Repos updated for room: {room_name} \n"
 
-                self.Api.messages.create(toPersonId=person_id, markdown=message)
+            if len(message_add_repo) > 0:
+                message += f"**Added:**\n" + message_add_repo
+            if len(message_remove_repo) > 0:
+                message += f"**Removed:**\n"+ message_remove_repo
+
+            self.Api.messages.create(toPersonId=person_id, markdown=message)
 
         elif event_action == 'deleted':
             removed_repos = self.delete_installation(installation_id, github_login_id)
@@ -85,7 +97,9 @@ class gitwebhook:
                 for repo in removed_repos:
                     message_uninstall += f" - " + repo + "\n"
 
-                self.Api.messages.create(self.room_id, markdown=message_uninstall)    
+                self.Api.messages.create(self.room_id, markdown=message_uninstall)
+
+
 
     def edit_repo(self, room_id, repo, token, request):
 
@@ -124,7 +138,7 @@ class gitwebhook:
         token = event_info[0]['access_token']
 
         self.table.delete_item(Key={'installation_id': str(installation_id)})
-        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        self.table = self.dynamodb.Table(self.db_room_name)
 
         response = self.table.query(
             KeyConditionExpression=Key('room_id').eq(self.room_id))
@@ -149,7 +163,7 @@ class gitwebhook:
 
     def check_installation(self, installation_id, github_id):
         self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table('active_github_installations')
+        self.table = self.dynamodb.Table(self.db_installation_name)
 
         try:
             response = self.table.query(

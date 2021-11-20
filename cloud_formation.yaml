@@ -1,0 +1,595 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  'AWS::CloudFormation::Designer':
+    e7da8139-cc95-4600-9cdb-3372696bced9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 190
+        'y': 140
+      z: 1
+      embeds: []
+    690cb47e-5923-4e28-883c-a11440f4adc4:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 150
+        'y': 40
+      z: 1
+      embeds: []
+    e634396b-c50c-412d-a03e-dea189da9e74:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 30
+        'y': 90
+      z: 1
+      embeds: []
+      dependson:
+        - 690cb47e-5923-4e28-883c-a11440f4adc4
+    2dabbaf7-abab-46d6-81d2-ef2c08a17b01:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 510
+        'y': 30
+      z: 1
+      embeds: []
+    d74a68af-6df9-4f6e-8350-76d0c06ea1da:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 190
+        'y': 210
+      z: 1
+      embeds: []
+    e6ba90e0-7d27-4bee-ad7f-643e3e678a4d:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 510
+        'y': 130
+      z: 1
+      embeds: []
+    d47edd72-2c89-4402-8d9d-b491fc9a9391:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 390
+        'y': 120
+      z: 1
+      embeds: []
+    f8454eab-09e5-492b-b18d-3cd73e878ec7:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 110
+        'y': 140
+      z: 1
+      embeds: []
+    09ff0abd-3273-42ed-8bde-de6ef96598e9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 110
+        'y': 210
+      z: 1
+      embeds: []
+    e8f7da01-fcb2-4c3f-b331-0df7d593927d:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 270
+        'y': 90
+      z: 1
+      embeds: []
+    e153092a-2a0b-4490-85df-2e03b367696b:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 270
+        'y': 30
+      z: 1
+      embeds: []
+    23fe9e8e-1ce3-4fb7-b272-431946d1c309:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 390
+        'y': 30
+      z: 1
+      embeds: []
+    78db63b4-6960-4fe9-87fc-47fd6ffeaad0:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 30
+        'y': 20
+      z: 0
+      embeds: []
+      isassociatedwith:
+        - 690cb47e-5923-4e28-883c-a11440f4adc4
+    76a9ea71-1449-4142-a6ad-505f57484071:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -140
+        'y': 50
+      z: 0
+      embeds: []
+    1ae3457b-36e3-48fd-8fd7-b309db18b087:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -230
+        'y': 50
+      z: 0
+      embeds: []
+      isassociatedwith:
+        - 76a9ea71-1449-4142-a6ad-505f57484071
+    2cc6e775-6571-4763-ae4c-3bb188cbcc39:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -140
+        'y': 120
+      z: 0
+      embeds: []
+    f5718e5c-4739-4f0b-8f1f-06c1cac973ad:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -140
+        'y': 190
+      z: 0
+      embeds: []
+    8d3e8115-df67-406c-a7bb-983f69295530:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -40
+        'y': 20
+      z: 0
+      embeds: []
+    ad2d2fb6-1163-4706-84f2-bd0530148987:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -40
+        'y': 160
+      z: 0
+      embeds: []
+    911e338a-e83d-49c7-98ab-680580006084:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -40
+        'y': 90
+      z: 0
+      embeds: []
+Parameters:
+  dbTableRoomsName:
+    Type: String
+    Default: cidrbot-rooms
+  dbTableInstallationsName:
+    Type: String
+    Default: cidrbot-active-installations
+  dbTableAuthName:
+    Type: String
+    Default: cidrbot-active-auth-requests
+  apiGitAuthName:
+    Type: String
+    Default: cidrbot-git-auth
+  apiGitAuthMappingKeyName:
+    Type: String
+    Default: cidr-git-auth
+  apiGitMappingKeyName:
+    Type: String
+    Default: cidr-git-webhook
+  apiGitName:
+    Type: String
+    Default: cidrbot-api-git
+  apiName:
+    Type: String
+    Default: cidrbot-api
+  securityGroupId:
+    Type: String
+    Default: ''
+  subnetId:
+    Type: String
+    Default: ''
+  lambdaExecutionRole:
+    Type: String
+    Default: ''
+  githubWebhookPath:
+    Type: String
+    Default: ''
+  organizationId:
+    Type: String
+    Default: ''
+  regionName:
+    Type: String
+    Default: ''
+  targetUrl:
+    Type: String
+    Default: ''
+  webexBotId:
+    Type: String
+    Default: ''
+  webexAccessToken:
+    Type: String
+    Default: ''
+  callBackUrl:
+    Type: String
+    Default: ''
+  clientId:
+    Type: String
+    Default: ''
+  clientSecret:
+    Type: String
+    Default: ''
+  apiGatewayStageName:
+    Type: String
+    Default: '*'
+  apiGatewayHTTPMethod:
+    Type: String
+    Default: '*'
+  gitLambdaFunctionName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: cidrbot-gitauth
+  lambdaFunctionName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: cidrbot
+  lambdaDomainName:
+    Type: String
+    Default: ''
+  lambdaAcmCert:
+    Type: String
+    Default: >-
+      ''
+  route53RecordGroupSetHostedZone:
+    Type: String
+    Default: ''
+  weeklyTimerName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: timer-weekly
+  dailyTimerName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: timer-daily
+Resources:
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Environment:
+        Variables:
+          GITHUB_WEBHOOK_PATH: !Ref githubWebhookPath
+          DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
+          DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
+          DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
+          ORGANIZATION_ID: !Ref organizationId
+          REGION_NAME: !Ref regionName
+          TARGET_URL: !Ref targetUrl
+          WEBEX_BOT_ID: !Ref webexBotId
+          WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+      Runtime: python3.8
+      Handler: lambda_function.handler
+      Role: !Ref lambdaExecutionRole
+      FunctionName: !Ref lambdaFunctionName
+      Code:
+        ZipFile: |
+          import logging
+          import datetime
+          import json
+          import socket
+          def lambda_handler(event, handle):
+              logger.debug('new event received: %s', str(event))
+               return {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": json.dumps({"testkey ": "testval"})
+                }
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref securityGroupId
+        SubnetIds:
+        - !Ref subnetId
+      Description: Base cidrbot lambda function
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 690cb47e-5923-4e28-883c-a11440f4adc4
+  lambdaApiGatewayInvoke:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e634396b-c50c-412d-a03e-dea189da9e74
+    DependsOn:
+      - LambdaFunction
+  lambdaApiGitGatewayInvoke:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGit}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 78db63b4-6960-4fe9-87fc-47fd6ffeaad0
+  Api:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiName
+      RouteKey: !Sub 'ANY /${lambdaFunctionName}'
+      Description: Lambda api for webex webhooks
+      ProtocolType: HTTP
+      Target: !GetAtt LambdaFunction.Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e7da8139-cc95-4600-9cdb-3372696bced9
+    DependsOn:
+      - LambdaFunction
+  ApiGit:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiGitName
+      RouteKey: !Sub 'ANY /${lambdaFunctionName}'
+      Description: Lambda api for github webhooks
+      ProtocolType: HTTP
+      Target: !GetAtt LambdaFunction.Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f8454eab-09e5-492b-b18d-3cd73e878ec7
+  ApiMapping:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref Api
+      Stage: $default
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d74a68af-6df9-4f6e-8350-76d0c06ea1da
+  ApiMappingGit:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      ApiMappingKey: !Ref apiGitMappingKeyName
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref ApiGit
+      Stage: $default
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 09ff0abd-3273-42ed-8bde-de6ef96598e9
+  ApiDomainName:
+    Type: 'AWS::ApiGatewayV2::DomainName'
+    Properties:
+      DomainName: !Ref lambdaDomainName
+      DomainNameConfigurations:
+        - EndpointType: REGIONAL
+          CertificateArn: !Ref lambdaAcmCert
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2dabbaf7-abab-46d6-81d2-ef2c08a17b01
+  Route53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt ApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
+      HostedZoneId: !Ref route53RecordGroupSetHostedZone
+      Name: !Ref lambdaDomainName
+      Type: A
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e6ba90e0-7d27-4bee-ad7f-643e3e678a4d
+  DailyTimerRuleTest:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: !Ref dailyTimerName
+      Description: ScheduledRule
+      ScheduleExpression: cron(0 15 * * ? *)
+      State: DISABLED
+      Targets:
+        - Id: lambda-timer
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: !Sub |
+            {
+              "Type": "Timer"
+            }
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e8f7da01-fcb2-4c3f-b331-0df7d593927d
+  WeeklyTimerRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: !Ref weeklyTimerName
+      Description: ScheduledRule
+      ScheduleExpression: cron(0 16 ? * 2 *)
+      State: DISABLED
+      Targets:
+        - Id: lambda-weekly-timer
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: !Sub |
+            {
+              "Type": "Weekly Timer"
+            }
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e153092a-2a0b-4490-85df-2e03b367696b
+  TimerPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref lambdaFunctionName
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn:
+        'Fn::GetAtt':
+          - DailyTimerRuleTest
+          - Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d47edd72-2c89-4402-8d9d-b491fc9a9391
+  WeeklyTimerPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref lambdaFunctionName
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn:
+        'Fn::GetAtt':
+          - WeeklyTimerRule
+          - Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 23fe9e8e-1ce3-4fb7-b272-431946d1c309
+  GitLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Environment:
+        Variables:
+          CALLBACKURL: !Ref callBackUrl
+          CLIENTID: !Ref clientId
+          CLIENTSECRET: !Ref clientSecret
+          DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
+          DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
+          DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
+          WEBEX_BOT_ID: !Ref webexBotId
+          WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+      Runtime: python3.8
+      Handler: lambda_function.handler
+      Role: !Ref lambdaExecutionRole
+      FunctionName: !Ref gitLambdaFunctionName
+      Code:
+        ZipFile: |
+          import logging
+          import datetime
+          import json
+          import socket
+          def lambda_handler(event, handle):
+              logger.debug('new event received: %s', str(event))
+               return {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": json.dumps({"testkey ": "testval"})
+                }
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref securityGroupId
+        SubnetIds:
+        - !Ref subnetId
+      Description: cidrbot git auth lambda function
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 76a9ea71-1449-4142-a6ad-505f57484071
+  gitLambdaPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GitLambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GitAuthApi}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${gitLambdaFunctionName}
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 1ae3457b-36e3-48fd-8fd7-b309db18b087
+  GitAuthApi:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiGitAuthName
+      RouteKey: !Sub 'ANY /${gitLambdaFunctionName}'
+      Description: Lambda api for git auth callbacks
+      ProtocolType: HTTP
+      Target: !GetAtt GitLambdaFunction.Arn
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2cc6e775-6571-4763-ae4c-3bb188cbcc39
+  GitAuthApiMapping:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      ApiMappingKey: !Ref apiGitAuthMappingKeyName
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref GitAuthApi
+      Stage: $default
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f5718e5c-4739-4f0b-8f1f-06c1cac973ad
+  roomsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableRoomsName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 8d3e8115-df67-406c-a7bb-983f69295530
+  installationsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: installation_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: installation_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableInstallationsName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: ad2d2fb6-1163-4706-84f2-bd0530148987
+  authRequestsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: state
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableAuthName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 911e338a-e83d-49c7-98ab-680580006084

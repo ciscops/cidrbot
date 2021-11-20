@@ -1,5 +1,7 @@
 import logging
 import os
+import datetime
+import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
@@ -10,25 +12,33 @@ class dynamoapi:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
+        if "DYNAMODB_ROOM_TABLE" in os.environ:
+            self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
+            sys.exit(1)
+
+        if "DYNAMODB_AUTH_TABLE" in os.environ:
+            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
+            sys.exit(1)
+
         self.dynamodb = ""
         self.table = ""
 
     def get_dynamo(self):
         self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table('cidrbot-users-repos')
+        self.table = self.dynamodb.Table(self.db_room_name)
 
     def add_auth_request(self, state, state_value, room_id):
-        self.get_dynamo()
-        self.table.update_item(
-                    Key={'room_id': room_id},
-                    UpdateExpression="set #auth.#userauth= :name",
-                    ExpressionAttributeNames={
-                        '#auth': 'auth_requests',
-                        '#userauth' : state
-                    },
-                    ExpressionAttributeValues = {
-                        ':name': state_value
-                        })
+        self.dynamodb = boto3.resource('dynamodb')
+        self.table = self.dynamodb.Table(self.db_auth_name)
+
+        time_to_expire = datetime.datetime.today() + datetime.timedelta(minutes=10)
+        expire_date = int(time.mktime(time_to_expire.timetuple()))
+
+        self.table.put_item(Item={'state': state, 'personId' : state_value['personId'], 'roomId' : state_value['roomId'], 'ptId' : state_value['ptId'], 'ttl' : expire_date})
 
     def create_room(self, room_id, members, id_list):
         self.get_dynamo()
@@ -111,6 +121,15 @@ class dynamoapi:
 
         for i in repo_dict:
             repo_list.append(i)
+
+        return repo_list
+
+    def get_repo_keys(self, room_id):
+        self.get_dynamo()
+        response = self.table.query(
+            KeyConditionExpression=Key('room_id').eq(room_id))
+
+        repo_list = response['Items'][0]['repos']
 
         return repo_list
 

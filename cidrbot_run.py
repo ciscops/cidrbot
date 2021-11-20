@@ -1,6 +1,8 @@
 import logging
 import datetime
 import json
+import os
+import sys
 from wxt_cidrbot.cidrbot import cidrbot
 from wxt_cidrbot.git_webhook_handler import gitwebhook
 
