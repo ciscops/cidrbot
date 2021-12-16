@@ -6,7 +6,6 @@ import json
 import datetime
 import time
 import jwt
-import cryptography
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError

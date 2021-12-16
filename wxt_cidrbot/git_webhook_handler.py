@@ -14,28 +14,28 @@ class gitwebhook:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
-        if "WEBEX_BOT_ID" in os.environ:
-            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
-        else:
-            logging.error("Environment variable WEBEX_BOT_ID must be set")
-            sys.exit(1)
-
         if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
             self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
-        if "DYNAMODB_ROOM_TABLE" in os.environ:
-            self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
+        if "WEBEX_BOT_ID" in os.environ:
+            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
         else:
-            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
+            logging.error("Environment variable WEBEX_BOT_ID must be set")
             sys.exit(1)
 
         if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
             self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
         else:
             logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
+            sys.exit(1)    
+
+        if "DYNAMODB_ROOM_TABLE" in os.environ:
+            self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
             sys.exit(1)
 
         self.dynamo = dynamo_api_handler.dynamoapi()

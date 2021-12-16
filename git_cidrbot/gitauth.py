@@ -4,7 +4,6 @@ import sys
 import base64
 import json
 import time
-import cryptography
 import jwt
 import boto3
 from boto3.dynamodb.conditions import Key
