@@ -95,18 +95,8 @@ class gitauth:
 
         try:
             get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
-
         except ClientError as e:
-            if e.response['Error']['Code'] == 'DecryptionFailureException':
-                raise e
-            elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-                raise e
-            elif e.response['Error']['Code'] == 'InvalidParameterException':
-                raise e
-            elif e.response['Error']['Code'] == 'InvalidRequestException':
-                raise e
-            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-                raise e
+            raise e
         else:
             if 'SecretString' in get_secret_value_response:
                 secret = get_secret_value_response['SecretString']

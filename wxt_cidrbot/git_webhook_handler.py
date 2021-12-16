@@ -30,7 +30,7 @@ class gitwebhook:
             self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
         else:
             logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
-            sys.exit(1)    
+            sys.exit(1)
 
         if "DYNAMODB_ROOM_TABLE" in os.environ:
             self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")

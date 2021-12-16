@@ -8,7 +8,7 @@ TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
 # For GitAuth function, PYDIRS=git_cidrbot
 # For CIDRBOT function, PYDIRS=wxt_cidrbot
-PYDIRS=git_cidrbot
+PYDIRS=wxt_cidrbot
 VENV = venv_$(PROJECT_NAME)
 VENV_BIN=$(VENV)/bin
 SRC_FILES := $(shell find $(PYDIRS) -name \*.py)
