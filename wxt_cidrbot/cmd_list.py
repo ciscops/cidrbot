@@ -53,12 +53,11 @@ class cmdlist:
             text = text.lstrip()
             text = text.lower()
             text_split = text.split(" ")
-            text_split.insert(0,'')
+            text_split.insert(0, '')
         else:
             text = ' ' + request
             text = text.lower()
             text_split = text.split(' ')
-
 
         if event_type == "Direct Message":
             #Change this self.webex thing to be a more accurate name please
@@ -73,7 +72,10 @@ class cmdlist:
                 return self.help_menu("all")
             return f"List of avaliable commands in direct messages: \n - enable/disable reminders"
 
-        words_list = ['list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign', 'unassign', 'info', 'test']
+        words_list = [
+            'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
+            'unassign', 'info', 'test'
+        ]
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
 
         repo_names = self.dynamo.get_repositories(room_id)
@@ -99,7 +101,12 @@ class cmdlist:
                 name_list.append(first_name_lower)
                 first_name = str(first_name_lower + str(user)[1].lower())
                 self.first_name_dups.update({user: {'first_name': first_name_lower}})
-                self.username_email_dict.update({first_name_lower: {'login': user, 'duplicate': user_dict[user]['dup_status']}})
+                self.username_email_dict.update({
+                    first_name_lower: {
+                        'login': user,
+                        'duplicate': user_dict[user]['dup_status']
+                    }
+                })
 
             self.username_email_dict.update({first_name: {'login': user, 'duplicate': user_dict[user]['dup_status']}})
 
@@ -210,11 +217,8 @@ class cmdlist:
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
 
         URL = f'https://webexapis.com/v1/messages'
-        headers = {'Authorization': 'Bearer ' + self.wxt_access_token,
-                   'Content-type': 'application/json;charset=utf-8'}
-        post_message = {'roomId' : room_id,
-                     'markdown' : text,
-                     'parentId' : pt_id}
+        headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
+        post_message = {'roomId': room_id, 'markdown': text, 'parentId': pt_id}
         response = requests.post(URL, json=post_message, headers=headers)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
@@ -442,7 +446,8 @@ class cmdlist:
 
         list_issues_help = (
             "-Display issues: **@Cidrbot list (my, all) issues (in) (repo name or Git username, Webex firstname)**\n" +
-            "- **@Cidrbot list issues** -lists unassigned issues\n" + "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
+            "- **@Cidrbot list issues** -lists unassigned issues\n" +
+            "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
             "- **@Cidrbot list issues (Github username)**\n" + "- **@Cidrbot list issues (Webex firstname)**\n" +
             "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" + "\n"
         )
@@ -450,8 +455,7 @@ class cmdlist:
             f"-Assign/Unassign issue: **@Cidrbot (assign/unassign) (repo) (issue_num) (me, Git username, Webex firstname)**\n"
             + "- **@Cidrbot assign/unassign (repo) (issue_num) (me)**\n" +
             "- **@Cidrbot assign/unassign (repo) (issue_num) (Git username)**\n" +
-            "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" +
-            "- Note: unassigning a pull request is a currently disabled feature\n" + "\n"
+            "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" + "\n"
         )
         syntax_help = (
             f"-Syntax examples:\n" + "- Github username: **ppajersk**  \n" + "- Webex firstname: **Paul**  \n" +
@@ -464,7 +468,7 @@ class cmdlist:
         repos_help = (
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
             "- **@Cidrbot manage repos** - only for moderators in chat room\n"
-            )
+        )
 
         syntax_end_text = (
             f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"

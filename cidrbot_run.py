@@ -32,16 +32,17 @@ def lambda_handler(event, handle):
     git = gitwebhook()
     # Determine the type of event and execute the correct function
 
-    path = event['path']
-    if path == webhook_path:
-        git.webhook_request(event)
+    if 'path' in event:
+        if event['path'] == webhook_path:
+            git.webhook_request(event)
+        elif event['path'] == base_webhook_path:
+            cidr.webhook_request(event)
 
     if event.get("Type") == "Timer":
         cidr.send_timed_msg()
     elif event.get("Type") == "Weekly Timer":
         cidr.weekly_reminder_email()
-    elif path == base_webhook_path:
-        cidr.webhook_request(event)
+
     end_time = datetime.datetime.now()
     logger.debug('Script complete, total runtime {%s - %s}', end_time, start_time)
     return {

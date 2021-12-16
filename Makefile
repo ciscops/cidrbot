@@ -143,13 +143,13 @@ lambda-function-cidrbot.zip: cidrbot_run.py ## Output all code to zip file
 lambda-upload-gitauth:lambda-function-gitauth.zip ## Deploy all code to aws
 	aws lambda update-function-code \
 	--function-name $(LAMBDA_GITAUTH_FUNCTION_NAME) \
-	--zip-file fileb://lambda-function.zip
+	--zip-file fileb://lambda-function-gitauth.zip
 
 # Upload layer for cidrbot lambda function
 lambda-upload-cidrbot:lambda-function-cidrbot.zip ## Deploy all code to aws
 	aws lambda update-function-code \
 	--function-name $(LAMBDA_CIDRBOT_FUNCTION_NAME) \
-	--zip-file fileb://lambda-function.zip
+	--zip-file fileb://lambda-function-cidrbot.zip
 
 build-container:
 	docker build -t lambda-builder:latest .

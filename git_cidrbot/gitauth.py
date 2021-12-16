@@ -1,10 +1,14 @@
 import logging
 import os
 import sys
+import base64
 import json
 import time
+import cryptography
+import jwt
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 from webexteamssdk import WebexTeamsAPI
 import requests
 
@@ -33,16 +37,16 @@ class gitauth:
             logging.error("Environment variable CALLBACKURL must be set")
             sys.exit(1)
 
-        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
-            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
-        else:
-            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
-            sys.exit(1)
-
         if "WEBEX_BOT_ID" in os.environ:
             self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
         else:
             logging.error("Environment variable WEBEX_BOT_ID must be set")
+            sys.exit(1)
+
+        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
+            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
+        else:
+            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
         if "DYNAMODB_ROOM_TABLE" in os.environ:
@@ -51,27 +55,72 @@ class gitauth:
             logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
             sys.exit(1)
 
-        if "DYNAMODB_AUTH_TABLE" in os.environ:
-            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
-        else:
-            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
-            sys.exit(1)
-
         if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
             self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
         else:
             logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
             sys.exit(1)
 
+        if "DYNAMODB_AUTH_TABLE" in os.environ:
+            self.db_auth_name = os.getenv("DYNAMODB_AUTH_TABLE")
+        else:
+            logging.error("Environment variable DYNAMODB_AUTH_TABLE must be set")
+            sys.exit(1)
+
+        if "SECRET_NAME" in os.environ:
+            self.secret_name = os.getenv("SECRET_NAME")
+        else:
+            logging.error("Environment variable SECRET_NAME must be set")
+            sys.exit(1)
+
+        if "REGION_NAME" in os.environ:
+            self.region_name = os.getenv("REGION_NAME")
+        else:
+            logging.error("Environment variable REGION_NAME must be set")
+            sys.exit(1)
+
+        if "APP_ID" in os.environ:
+            self.app_id = os.getenv("APP_ID")
+        else:
+            logging.error("Environment variable APP_ID must be set")
+            sys.exit(1)
+
         self.dynamodb = ""
         self.table = ''
         self.Api = WebexTeamsAPI()
+        self.private_key = ''
+
+    def get_git_key(self):
+        session = boto3.session.Session()
+        client = session.client(service_name='secretsmanager', region_name=self.region_name)
+
+        try:
+            get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
+
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'DecryptionFailureException':
+                raise e
+            elif e.response['Error']['Code'] == 'InternalServiceErrorException':
+                raise e
+            elif e.response['Error']['Code'] == 'InvalidParameterException':
+                raise e
+            elif e.response['Error']['Code'] == 'InvalidRequestException':
+                raise e
+            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
+                raise e
+        else:
+            if 'SecretString' in get_secret_value_response:
+                secret = get_secret_value_response['SecretString']
+                self.private_key = secret
+            else:
+                decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
+                self.private_key = json.loads(decoded_binary_secret)
 
     def webhook_request(self, event):
         json_string = event
 
         if json_string['headers']['referer'] == 'https://github.com/':
-            code = json_string['queryStringParameters']['code']
+            #code = json_string['queryStringParameters']['code']
             install_id = json_string['queryStringParameters']['installation_id']
 
             if json_string['queryStringParameters']['setup_action'] == 'install':
@@ -96,12 +145,19 @@ class gitauth:
                         })
                     }
 
-                payload = self.check_payload(code, state)
-                if payload is not None:
-                    state_status = self.check_state(state)
-                    if state_status is not False:
+                state_status = self.check_state(state)
+                if state_status is not False:
+                    time_epoch = int(time.time())
+
+                    payload = {'iat': time_epoch, 'exp': time_epoch + (10 * 60), 'iss': self.app_id}
+
+                    self.get_git_key()
+                    encoded_key = jwt.encode(payload, self.private_key, algorithm="RS256")
+
+                    token_payload = self.create_token(install_id, encoded_key)
+                    if token_payload is not None:
                         self.logging.debug("Success the state matches and the payload was true")
-                        #self.logging.debug(str(payload) + " " + str(state) + " " + str(state_status))
+                        #self.logging.debug(str(token_payload) + " " + str(state) + " " + str(state_status))
 
                         person_id = state_status[0]['personId']
                         room_id = state_status[0]['roomId']
@@ -110,20 +166,24 @@ class gitauth:
                         room = self.Api.rooms.get(room_id)
                         room_name = room.title
 
-                        start = payload.find("access_token=") + len("access_token=")
-                        end = payload.find("&expires_in")
-                        token = payload[start:end]
+                        payload_dict = json.loads(token_payload)
+                        token = payload_dict['token']
 
-                        repo_info = self.git_user_info(
-                            token, f'https://api.github.com/user/installations/{install_id}/repositories'
+                        expire_date = int(time.time()) + 3600
+
+                        repo_info = self.git_repo_info(token, f'https://api.github.com/installation/repositories')
+                        user_info = self.git_user_info(
+                            encoded_key, f'https://api.github.com/app/installations/{install_id}'
                         )
-                        user_info = self.git_user_info(token, f'https://api.github.com/user')
 
                         repo_info_dict = json.loads(repo_info)
                         user_info_dict = json.loads(user_info)
 
-                        user_id = user_info_dict['id']
-                        user_name = user_info_dict['login']
+                        self.logging.debug(user_info_dict)
+                        self.logging.debug(repo_info_dict)
+
+                        user_id = user_info_dict['account']['id']
+                        user_name = user_info_dict['account']['login']
                         count = repo_info_dict['total_count']
                         repo_path_list = []
 
@@ -146,8 +206,9 @@ class gitauth:
 
                         post_message = {'roomId': room_id, 'parentId': pt_id, 'markdown': text}
 
+                        #self.add_installation(str(user_id), install_id, person_id, user_name, room_id, token, repo_path_list, expire_date, refresh_token)
                         self.add_installation(
-                            str(user_id), install_id, person_id, user_name, room_id, token, repo_path_list
+                            str(user_id), install_id, person_id, user_name, room_id, token, repo_path_list, expire_date
                         )
                         self.send_webex_message(post_direct_message)
                         self.send_webex_message(post_message)
@@ -155,7 +216,7 @@ class gitauth:
                         self.logging.debug("Auth cycle completed, redirecting user")
                         return None
 
-                    self.logging.debug("Bad state, no open requests")
+                    self.logging.debug("Token payload is none")
                     return {
                         "statusCode":
                         302,
@@ -171,7 +232,7 @@ class gitauth:
                         })
                     }
 
-                self.logging.debug("Bad payload can't contact github")
+                self.logging.debug("State status is false")
                 return None
 
             self.logging.debug("Bad setup action")
@@ -181,13 +242,27 @@ class gitauth:
         self.logging.debug("Unknown referer")
         return None
 
-    def git_user_info(self, token, URL):
+    def git_repo_info(self, token, URL):
         headers = {'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json'}
         session = requests.Session()
         response = session.get(URL, headers=headers)
         if response.status_code == 200:
-            self.logging.debug("Git user info retrieved")
+            self.logging.debug("Repo info granted")
             resp = response.text
+            return resp
+
+        self.logging.debug(str(response.status_code))
+        self.logging.debug(str(response.text))
+        return None
+
+    def git_user_info(self, encoded_key, URL):
+        headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
+        post_data = {}
+
+        response = requests.get(URL, json=post_data, headers=headers)
+        if response.status_code == 200:
+            self.logging.debug("User info granted")
+            resp = str(response.text)
             return resp
 
         self.logging.debug(str(response.status_code))
@@ -200,7 +275,7 @@ class gitauth:
 
         requests.post(URL, json=post_data, headers=headers)
 
-    def add_installation(self, user_id, install_id, person_id, user_name, room_id, token, repo_path_list):
+    def add_installation(self, user_id, install_id, person_id, user_name, room_id, token, repo_path_list, expire_date):
         self.dynamodb = boto3.resource('dynamodb')
         self.table = self.dynamodb.Table(self.db_installation_name)
 
@@ -211,7 +286,8 @@ class gitauth:
                 'user_name': user_name,
                 'person_id': person_id,
                 'room_id': room_id,
-                'access_token': token
+                'access_token': token,
+                'expire_date': expire_date,
             }
         )
 
@@ -259,19 +335,13 @@ class gitauth:
 
         return state_condition
 
-    def check_payload(self, code, state):
-        URL = f'https://github.com/login/oauth/access_token'
-        headers = {"Access-Control-Allow-Origin": "*"}
-        post_data = {
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': code,
-            'redirect_uri': self.callback_url,
-            'state': state
-        }
+    def create_token(self, installation_id, encoded_key):
+        URL = f'https://api.github.com/app/installations/{installation_id}/access_tokens'
+        headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
+        post_data = {}
 
         response = requests.post(URL, json=post_data, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == 201:
             self.logging.debug("Access key granted")
             resp = str(response.text)
             return resp
