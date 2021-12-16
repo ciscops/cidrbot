@@ -62,7 +62,7 @@ class gitwebhook:
             message_remove_repo = ""
 
             self.dynamodb = boto3.resource('dynamodb')
-            self.table = self.dynamodb.Table('cidrbot-users-repos')
+            self.table = self.dynamodb.Table(self.db_room_name)
             #user_reminders = self.dynamo.get_user_info(name, room_id)
 
             for repo_added in json_string['repositories_added']:
