@@ -168,9 +168,6 @@ Resources:
         SubnetIds:
           - !Ref subnetId
       Description: Base cidrbot lambda function
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 690cb47e-5923-4e28-883c-a11440f4adc4
   lambdaApiGatewayInvoke:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -179,9 +176,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub >-
         arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: e634396b-c50c-412d-a03e-dea189da9e74
     DependsOn:
       - LambdaFunction
   lambdaApiGitGatewayInvoke:
@@ -192,9 +186,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub >-
         arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGit}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 78db63b4-6960-4fe9-87fc-47fd6ffeaad0
   Api:
     Type: 'AWS::ApiGatewayV2::Api'
     Properties:
@@ -203,9 +194,6 @@ Resources:
       Description: Lambda api for webex webhooks
       ProtocolType: HTTP
       Target: !GetAtt LambdaFunction.Arn
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: e7da8139-cc95-4600-9cdb-3372696bced9
     DependsOn:
       - LambdaFunction
   ApiGit:
@@ -216,18 +204,12 @@ Resources:
       Description: Lambda api for github webhooks
       ProtocolType: HTTP
       Target: !GetAtt LambdaFunction.Arn
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: f8454eab-09e5-492b-b18d-3cd73e878ec7
   ApiMapping:
     Type: 'AWS::ApiGatewayV2::ApiMapping'
     Properties:
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref Api
       Stage: $default
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: d74a68af-6df9-4f6e-8350-76d0c06ea1da
   ApiMappingGit:
     Type: 'AWS::ApiGatewayV2::ApiMapping'
     Properties:
@@ -235,9 +217,6 @@ Resources:
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref ApiGit
       Stage: $default
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 09ff0abd-3273-42ed-8bde-de6ef96598e9
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -246,9 +225,6 @@ Resources:
       DomainNameConfigurations:
         - EndpointType: REGIONAL
           CertificateArn: !Ref lambdaAcmCert
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 2dabbaf7-abab-46d6-81d2-ef2c08a17b01
   Route53Record:
     Type: 'AWS::Route53::RecordSet'
     Properties:
@@ -258,9 +234,6 @@ Resources:
       HostedZoneId: !Ref route53RecordGroupSetHostedZone
       Name: !Ref lambdaDomainName
       Type: A
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: e6ba90e0-7d27-4bee-ad7f-643e3e678a4d
   DailyTimerRuleTest:
     Type: 'AWS::Events::Rule'
     Properties:
@@ -275,9 +248,6 @@ Resources:
             {
               "Type": "Timer"
             }
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: e8f7da01-fcb2-4c3f-b331-0df7d593927d
   WeeklyTimerRule:
     Type: 'AWS::Events::Rule'
     Properties:
@@ -292,9 +262,6 @@ Resources:
             {
               "Type": "Weekly Timer"
             }
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: e153092a-2a0b-4490-85df-2e03b367696b
   TimerPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -305,9 +272,6 @@ Resources:
         'Fn::GetAtt':
           - DailyTimerRuleTest
           - Arn
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: d47edd72-2c89-4402-8d9d-b491fc9a9391
   WeeklyTimerPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -318,9 +282,6 @@ Resources:
         'Fn::GetAtt':
           - WeeklyTimerRule
           - Arn
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 23fe9e8e-1ce3-4fb7-b272-431946d1c309
   GitLambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -363,9 +324,6 @@ Resources:
         SubnetIds:
           - !Ref subnetId
       Description: cidrbot git auth lambda function
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 76a9ea71-1449-4142-a6ad-505f57484071
   gitLambdaPermissions:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -374,9 +332,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub >-
         arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GitAuthApi}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${gitLambdaFunctionName}
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 1ae3457b-36e3-48fd-8fd7-b309db18b087
   GitAuthApi:
     Type: 'AWS::ApiGatewayV2::Api'
     Properties:
@@ -385,9 +340,6 @@ Resources:
       Description: Lambda api for git auth callbacks
       ProtocolType: HTTP
       Target: !GetAtt GitLambdaFunction.Arn
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 2cc6e775-6571-4763-ae4c-3bb188cbcc39
   GitAuthApiMapping:
     Type: 'AWS::ApiGatewayV2::ApiMapping'
     Properties:
@@ -395,9 +347,6 @@ Resources:
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref GitAuthApi
       Stage: $default
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: f5718e5c-4739-4f0b-8f1f-06c1cac973ad
   roomsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
@@ -411,9 +360,6 @@ Resources:
         ReadCapacityUnits: '5'
         WriteCapacityUnits: '5'
       TableName: !Ref dbTableRoomsName
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 8d3e8115-df67-406c-a7bb-983f69295530
   installationsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
@@ -427,9 +373,6 @@ Resources:
         ReadCapacityUnits: '5'
         WriteCapacityUnits: '5'
       TableName: !Ref dbTableInstallationsName
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: ad2d2fb6-1163-4706-84f2-bd0530148987
   authRequestsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
@@ -443,15 +386,9 @@ Resources:
         ReadCapacityUnits: '5'
         WriteCapacityUnits: '5'
       TableName: !Ref dbTableAuthName
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 911e338a-e83d-49c7-98ab-680580006084
   awsSecretsManagerSecret:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
         Name: !Ref awsSecretsName
         Description: "Private key for cidrbot app"
         SecretString: !Ref awsSecretsKey
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 3c90b7a5-2070-44f0-9e2d-18547e7d7998
