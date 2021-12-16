@@ -449,7 +449,8 @@ class cmdlist:
             "- **@Cidrbot list issues** -lists unassigned issues\n" +
             "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
             "- **@Cidrbot list issues (Github username)**\n" + "- **@Cidrbot list issues (Webex firstname)**\n" +
-            "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" + "\n"
+            "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" +
+            "- **@Cidrbot (repo name) (issue number) info** (@Cidrbot repopath/reponame 20 info) \n" + "\n"
         )
         assign_issues_help = (
             f"-Assign/Unassign issue: **@Cidrbot (assign/unassign) (repo) (issue_num) (me, Git username, Webex firstname)**\n"
