@@ -1,3 +1,6 @@
 webexteamssdk==1.6
 pygithub==1.55
 boto3==1.17.6
+requests==2.26.0
+cryptography==36.0.0
+cffi==1.15.0

@@ -17,16 +17,22 @@ class cidrbot:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
+        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
+            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
+        else:
+            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
+            sys.exit(1)
+
         if "WEBEX_BOT_ID" in os.environ:
             self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
         else:
             logging.error("Environment variable WEBEX_BOT_ID must be set")
             sys.exit(1)
 
-        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
-            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
+        if 'ORGANIZATION_ID' in os.environ:
+            self.orgID = os.getenv("ORGANIZATION_ID")
         else:
-            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
+            logging.error("Environment variable ORGANIZATION_ID must be set")
             sys.exit(1)
 
         # Initialize Api
@@ -51,10 +57,13 @@ class cidrbot:
         id_list = self.dynamo.get_all_ids()
 
         for room_id in id_list:
+            self.git_handle.room_and_edit_id(room_id, None)
+
             message = self.git_handle.scan_repos("List", 'All', self.dynamo.get_repositories(room_id), False)
 
-            self.logging.debug("sending message to " + room_id + "message " + message)
-            self.send_wbx_msg(self.roomID, message, None)
+            if '#' in message:
+                self.logging.debug("sending message to " + room_id + "message " + message)
+                self.send_wbx_msg(room_id, message, None)
 
     # Send a message to all users with reminders enabled: Every monday at 12pm est: Cron expression 0 16 ? * 2 *
     # Change this to weekly_reminder_message
@@ -64,6 +73,8 @@ class cidrbot:
         messaged_users = []
 
         for room in remind_users['Items']:
+            self.git_handle.room_and_edit_id(room['room_id'], None)
+
             assigned_issues_dict = self.git_handle.scan_repos(
                 "Dict", 'All', self.dynamo.get_repositories(room['room_id']), False
             )
@@ -92,7 +103,6 @@ class cidrbot:
                             message += text + '\n'
 
                         self.send_directwbx_msg(room['users'][user]['person_id'], message)
-                        #self.logging.debug(f"Sending message to {user} message = {message}")
                         messaged_users.append(user)
 
     # Process webhook request from lambda_function
@@ -101,6 +111,7 @@ class cidrbot:
         webex_msg_sender = json_string['data']['personEmail']
         event_type = json_string['name']
         user_id = json_string['data']['personId']
+        org_id = json_string['orgId']
         self.roomID = json_string['data']['roomId']
 
         if event_type == "New user":
@@ -146,7 +157,8 @@ class cidrbot:
                 self.dynamo.delete_user(webex_msg_sender, self.roomID)
 
         elif webex_msg_sender != "CIDRBot@webex.bot":
-            self.message_event(json_string, event_type, webex_msg_sender)
+            if org_id == self.orgID:
+                self.message_event(json_string, event_type, webex_msg_sender)
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id):

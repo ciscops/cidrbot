@@ -2,9 +2,12 @@
 PYTHON_EXE = python3
 # PROJECT_NAME is used to create the virtualenv name
 PROJECT_NAME="cidrbot"
-LAMBDA_FUNCTION_NAME="ppajersk-cidrbot"
+LAMBDA_GITAUTH_FUNCTION_NAME="ppajersk-cidrbot-gitauth"
+LAMBDA_CIDRBOT_FUNCTION_NAME="ppajersk-cidrbot"
 TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
+# For GitAuth function, PYDIRS=git_cidrbot
+# For CIDRBOT function, PYDIRS=wxt_cidrbot
 PYDIRS=wxt_cidrbot
 VENV = venv_$(PROJECT_NAME)
 VENV_BIN=$(VENV)/bin
@@ -112,21 +115,41 @@ lambda-packages: $(VENV) requirements.txt ## Install all libraries
 lambda-packages.zip: lambda-packages ## Output all code to zip file
 	cd lambda-packages && zip -r ../$@ * # zip all python source code into output.zip
 
-lambda-layer: lambda-packages.zip
+# Build lambda layer for gitauth lambda function
+lambda-layer-gitauth: lambda-packages.zip
 	aws lambda publish-layer-version \
-	--layer-name $(LAMBDA_FUNCTION_NAME)-layer \
+	--layer-name $(LAMBDA_GITAUTH_FUNCTION_NAME)-layer \
 	--license-info "MIT" \
 	--zip-file fileb://lambda-packages.zip \
 	--compatible-runtimes python3.8
 
-lambda-function.zip: cidrbot_run.py ## Output all code to zip file
+# Build lambda layer for cidrbot lambda function
+lambda-layer-cidrbot: lambda-packages.zip
+	aws lambda publish-layer-version \
+	--layer-name $(LAMBDA_CIDRBOT_FUNCTION_NAME)-layer \
+	--license-info "MIT" \
+	--zip-file fileb://lambda-packages.zip \
+	--compatible-runtimes python3.8
+
+lambda-function-gitauth.zip: cidr_git_lambda_function.py ## Output all code to zip file
+	cp cidr_git_lambda_function.py lambda_function.py
+	zip -r $@ lambda_function.py $(PYDIRS) # zip all python source code into output.zip
+
+lambda-function-cidrbot.zip: cidrbot_run.py ## Output all code to zip file
 	cp cidrbot_run.py lambda_function.py
 	zip -r $@ lambda_function.py $(PYDIRS) # zip all python source code into output.zip
 
-lambda-upload:lambda-function.zip ## Deploy all code to aws
+# Upload layer for gitauth lambda function
+lambda-upload-gitauth:lambda-function-gitauth.zip ## Deploy all code to aws
 	aws lambda update-function-code \
-	--function-name $(LAMBDA_FUNCTION_NAME) \
-	--zip-file fileb://lambda-function.zip
+	--function-name $(LAMBDA_GITAUTH_FUNCTION_NAME) \
+	--zip-file fileb://lambda-function-gitauth.zip
+
+# Upload layer for cidrbot lambda function
+lambda-upload-cidrbot:lambda-function-cidrbot.zip ## Deploy all code to aws
+	aws lambda update-function-code \
+	--function-name $(LAMBDA_CIDRBOT_FUNCTION_NAME) \
+	--zip-file fileb://lambda-function-cidrbot.zip
 
 build-container:
 	docker build -t lambda-builder:latest .

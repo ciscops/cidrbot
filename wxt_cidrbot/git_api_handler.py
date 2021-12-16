@@ -1,14 +1,13 @@
 import logging
 import os
 import sys
-import base64
-import json
 import re
+import secrets
+import string
 from datetime import datetime
-import boto3
+from webexteamssdk import WebexTeamsAPI
 import requests
 from github import Github
-from botocore.exceptions import ClientError
 from wxt_cidrbot import dynamo_api_handler
 from wxt_cidrbot import webex_edit_message
 
@@ -19,26 +18,20 @@ class githandler:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
-        # Initialize Aws secrets information
-        if "SECRET_NAME" in os.environ:
-            self.secret_name = os.getenv("SECRET_NAME")
-        else:
-            logging.error("Environment variable SECRET_NAME must be set")
-            sys.exit(1)
-
         if "REGION_NAME" in os.environ:
             self.region_name = os.getenv("REGION_NAME")
         else:
             logging.error("Environment variable REGION_NAME must be set")
             sys.exit(1)
 
-        if "SECRET_KEY" in os.environ:
-            self.secret_key = os.getenv("SECRET_KEY")
+        if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
+            self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
-            logging.error("Environment variable SECRET_KEY must be set")
+            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
         # Init sibling py files and used global vars
+        self.Api = WebexTeamsAPI()
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
         self.user_search_name = ""
@@ -49,39 +42,6 @@ class githandler:
         self.repos = []
         self.headers = {}
         self.session = ""
-
-    # Connect to aws secrets, and retrieve the github access token
-    def get_git_key(self):
-        session = boto3.session.Session()
-        client = session.client(service_name='secretsmanager', region_name=self.region_name)
-
-        try:
-            get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
-
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'DecryptionFailureException':
-                raise e
-            elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-                raise e
-            elif e.response['Error']['Code'] == 'InvalidParameterException':
-                raise e
-            elif e.response['Error']['Code'] == 'InvalidRequestException':
-                raise e
-            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-                raise e
-        else:
-            if 'SecretString' in get_secret_value_response:
-                secret = get_secret_value_response['SecretString']
-                json_string = json.loads(secret)
-                token = json_string[self.secret_key]
-                self.git_api = Github(token)
-                self.token = token
-            else:
-                decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-                json_string = json.loads(decoded_binary_secret)
-                token = json_string[self.secret_key]
-                self.git_api = Github(token)
-                self.token = token
 
     # Determine the reviewer, requested reviewer, or the assignee (if its an issue). The reviewer is currently a disabled feature
     def get_issue_info(self, issue, issue_type):
@@ -189,22 +149,23 @@ class githandler:
         return issue_dict
 
     # Iterate through a list of repos, and parse the relevant information from two dictionaries
-    def scan_repos(self, request, assign_type, repo_name, edit_status):
-        self.get_git_key()
+    def scan_repos(self, request, assign_type, repo_names, edit_status):
+        self.session = requests.Session()
+
         full_text = f"**{assign_type} Issues:**\n"
 
         message = f"Retrieving a list of {assign_type} issues, one moment..."
         msg_edit_num = 1
         issue_dict = {}
-        self.session = requests.Session()
-        self.headers = {'Authorization': 'token ' + self.token}
-        for repository in repo_name:
-            if edit_status:
-                if msg_edit_num < 10:
-                    message_repo = repository.upper()
-                    message += f"\n - Finding issues in repo: {message_repo}..."
-                    self.webex.edit_message(self.msg_edit_id, message, self.room_id)
-                    msg_edit_num += 1
+
+        for repository in repo_names:
+            repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
+            self.headers = {'Authorization': 'token ' + repo_token}
+            if edit_status and msg_edit_num < 10:
+                message_repo = repository.upper()
+                message += f"\n - Finding issues in repo: {message_repo}..."
+                self.webex.edit_message(self.msg_edit_id, message, self.room_id)
+                msg_edit_num += 1
 
             repo_url = "https://github.com/" + repository
             repo_text = "\n Repo: " + f'<a href="{repo_url}">{repository}</a>\n'
@@ -217,6 +178,9 @@ class githandler:
             all_prs = self.session.get(
                 'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers
             )
+
+            if all_prs.status_code != 200 or all_issues.status_code != 200:
+                break
 
             for pr in all_prs.json():
                 number = pr['number']
@@ -266,11 +230,9 @@ class githandler:
         self.msg_edit_id = msg_edit_id
 
     def check_github_user(self, name):
-        self.get_git_key()
         self.session = requests.Session()
-        self.headers = {'Authorization': 'token ' + self.token}
 
-        user = self.session.get('https://api.github.com/users/' + name, headers=self.headers)
+        user = self.session.get('https://api.github.com/users/' + name)
 
         json_str = user.json()
 
@@ -281,9 +243,10 @@ class githandler:
 
     def check_github_repo(self, repo_name):
         if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo_name):
-            self.get_git_key()
+            repo_token = self.dynamo.get_repo_keys(self.room_id, repo_name)
+
             self.session = requests.Session()
-            self.headers = {'Authorization': 'token ' + self.token}
+            self.headers = {'Authorization': 'token ' + repo_token}
 
             repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers)
 
@@ -295,16 +258,35 @@ class githandler:
             return False
         return False
 
+    def send_auth_link(self, person_id, room_id, pt_id):
+        link = "https://github.com/apps/cidrbot/installations/new?state="
+        state_value = {"personId": person_id, "roomId": room_id, "ptId": pt_id}
+
+        alphabet = string.ascii_letters + string.digits
+        state = ''.join(secrets.choice(alphabet) for i in range(26))
+
+        message = f'<a href="{link + state}">Click here</a>'
+        room = self.Api.rooms.get(room_id)
+        room_name = room.title
+
+        message += f" to authenticate a repo to Room: {room_name}. \n -Remember that this grants all members in the room access to your repo via bot commands"
+
+        self.dynamo.add_auth_request(state, state_value)
+        self.Api.messages.create(toPersonId=person_id, markdown=message)
+
     def issue_details(self, text):
-        self.get_git_key()
-        self.session = requests.Session()
-        self.headers = {'Authorization': 'token ' + self.token}
 
         try:
             issue_number = text[2]
             repo = text[1]
         except Exception:
             return f"Use Syntax: **@cidrbot (repo) (issue#) info**"
+
+        token = self.dynamo.get_repo_keys(self.room_id, repo)
+
+        self.git_api = Github(token)
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + token}
 
         if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
             if re.match(r'^[0-9]+$', issue_number):
@@ -372,8 +354,6 @@ class githandler:
 
     # Ensure an issue/pr was assigned. If the username was invalid, this function returns false and the webex user is notified of an invalid username error
     def check_assigned_status(self, search_name, issue_type, repo, issue_number):
-        self.session = requests.Session()
-        self.headers = {'Authorization': 'token ' + self.token}
         issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
         if issue_type == "issue":
             issue_json = issue.raw_data
@@ -389,6 +369,12 @@ class githandler:
 
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
     def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
+        token = self.dynamo.get_repo_keys(self.room_id, repo)
+
+        self.git_api = Github(token)
+        self.session = requests.Session()
+        self.headers = {'Authorization': 'token ' + token}
+
         if self.check_github_user(search_name) is False:
             return f"Invalid username: {search_name}"
 
@@ -450,7 +436,5 @@ class githandler:
                 return f"Could not assign issue to user {search_name}, Error: invalid user"
             return message
 
-        #  issue.delete_review_request(reviewers=[search_name])
-        #  return f"Pull request: {hyperlink_format} successfully unassigned from " + name_sim
-        #  Commented out because cidr-automation github account needs admin permissions to unassign pull requests
-        return f"Could not unassign pull request, Error: Currently disabled feature"
+        issue.delete_review_request(reviewers=[search_name])
+        return f"Pull request: {hyperlink_format} successfully unassigned from " + name_sim

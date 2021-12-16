@@ -1,0 +1,394 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  awsSecretsName:
+    Type: String
+    Default: 'cidrbot-private-key-pem'
+  awsSecretsKey:
+    Type: String
+    Default: ''
+  dbTableRoomsName:
+    Type: String
+    Default: cidrbot-rooms
+  dbTableInstallationsName:
+    Type: String
+    Default: cidrbot-active-installations
+  dbTableAuthName:
+    Type: String
+    Default: cidrbot-active-auth-requests
+  apiGitAuthName:
+    Type: String
+    Default: cidrbot-git-auth
+  appId:
+    Type: String
+    Default: ''
+  appClientId:
+    Type: String
+    Default: ''
+  appClientSecret:
+    Type: String
+    Default: ''
+  secretKey:
+    Type: String
+    Default: ''
+  secretName:
+    Type: String
+    Default: ''
+  apiGitAuthMappingKeyName:
+    Type: String
+    Default: cidr-git-auth
+  apiGitMappingKeyName:
+    Type: String
+    Default: cidr-git-webhook
+  apiGitName:
+    Type: String
+    Default: cidrbot-api-git
+  apiName:
+    Type: String
+    Default: cidrbot-api
+  securityPolicyName:
+    Type: String
+    Default: ''
+  securityGroupId:
+    Type: String
+    Default: ''
+  subnetId:
+    Type: String
+    Default: ''
+  lambdaExecutionRole:
+    Type: String
+    Default: ''
+  baseWebhookPath:
+    Type: String
+    Default: ''
+  githubWebhookPath:
+    Type: String
+    Default: ''
+  organizationId:
+    Type: String
+    Default: ''
+  regionName:
+    Type: String
+    Default: ''
+  targetUrl:
+    Type: String
+    Default: ''
+  webexBotId:
+    Type: String
+    Default: ''
+  webexAccessToken:
+    Type: String
+    Default: ''
+  callBackUrl:
+    Type: String
+    Default: ''
+  clientId:
+    Type: String
+    Default: ''
+  clientSecret:
+    Type: String
+    Default: ''
+  apiGatewayStageName:
+    Type: String
+    Default: '*'
+  apiGatewayHTTPMethod:
+    Type: String
+    Default: '*'
+  gitLambdaFunctionName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: cidrbot-gitauth
+  lambdaFunctionName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: cidrbot
+  lambdaDomainName:
+    Type: String
+    Default: ''
+  lambdaAcmCert:
+    Type: String
+    Default: ''
+  route53RecordGroupSetHostedZone:
+    Type: String
+    Default: ''
+  weeklyTimerName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: timer-weekly
+  dailyTimerName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: timer-daily
+  refreshTimerName:
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
+    Default: timer-refresh
+Resources:
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Environment:
+        Variables:
+          GITHUB_WEBHOOK_PATH: !Ref githubWebhookPath
+          BASE_WEBHOOK_PATH: !Ref baseWebhookPath
+          DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
+          DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
+          DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
+          ORGANIZATION_ID: !Ref organizationId
+          REGION_NAME: !Ref regionName
+          TARGET_URL: !Ref targetUrl
+          WEBEX_BOT_ID: !Ref webexBotId
+          WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+          APP_ID: !Ref appId
+          CLIENTID: !Ref appClientId
+          CLIENTSECRET: !Ref appClientSecret
+          SECRET_KEY: !Ref secretKey
+          SECRET_NAME: !Ref secretName
+      Runtime: python3.8
+      Handler: lambda_function.handler
+      Role: !Ref lambdaExecutionRole
+      FunctionName: !Ref lambdaFunctionName
+      Code:
+        ZipFile: |
+          import logging
+          import datetime
+          import json
+          import socket
+          def lambda_handler(event, handle):
+              logger.debug('new event received: %s', str(event))
+               return {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": json.dumps({"testkey ": "testval"})
+                }
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref securityGroupId
+        SubnetIds:
+          - !Ref subnetId
+      Description: Base cidrbot lambda function
+  lambdaApiGatewayInvoke:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
+    DependsOn:
+      - LambdaFunction
+  lambdaApiGitGatewayInvoke:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGit}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${lambdaFunctionName}
+  Api:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiName
+      RouteKey: !Sub 'ANY /${lambdaFunctionName}'
+      Description: Lambda api for webex webhooks
+      ProtocolType: HTTP
+      Target: !GetAtt LambdaFunction.Arn
+    DependsOn:
+      - LambdaFunction
+  ApiGit:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiGitName
+      RouteKey: !Sub 'ANY /${lambdaFunctionName}'
+      Description: Lambda api for github webhooks
+      ProtocolType: HTTP
+      Target: !GetAtt LambdaFunction.Arn
+  ApiMapping:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref Api
+      Stage: $default
+  ApiMappingGit:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      ApiMappingKey: !Ref apiGitMappingKeyName
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref ApiGit
+      Stage: $default
+  ApiDomainName:
+    Type: 'AWS::ApiGatewayV2::DomainName'
+    Properties:
+      DomainName: !Ref lambdaDomainName
+      SecurityPolicy: !Ref securityPolicyName
+      DomainNameConfigurations:
+        - EndpointType: REGIONAL
+          CertificateArn: !Ref lambdaAcmCert
+  Route53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt ApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
+      HostedZoneId: !Ref route53RecordGroupSetHostedZone
+      Name: !Ref lambdaDomainName
+      Type: A
+  DailyTimerRuleTest:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: !Ref dailyTimerName
+      Description: ScheduledRule
+      ScheduleExpression: cron(0 15 * * ? *)
+      State: DISABLED
+      Targets:
+        - Id: lambda-timer
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: !Sub |
+            {
+              "Type": "Timer"
+            }
+  WeeklyTimerRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: !Ref weeklyTimerName
+      Description: ScheduledRule
+      ScheduleExpression: cron(0 16 ? * 2 *)
+      State: DISABLED
+      Targets:
+        - Id: lambda-weekly-timer
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: !Sub |
+            {
+              "Type": "Weekly Timer"
+            }
+  TimerPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref lambdaFunctionName
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn:
+        'Fn::GetAtt':
+          - DailyTimerRuleTest
+          - Arn
+  WeeklyTimerPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref lambdaFunctionName
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn:
+        'Fn::GetAtt':
+          - WeeklyTimerRule
+          - Arn
+  GitLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Environment:
+        Variables:
+          CALLBACKURL: !Ref callBackUrl
+          CLIENTID: !Ref clientId
+          CLIENTSECRET: !Ref clientSecret
+          DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
+          DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
+          DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
+          WEBEX_BOT_ID: !Ref webexBotId
+          WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+          APP_ID: !Ref appId
+          REGION_NAME: !Ref regionName
+          SECRET_NAME: !Ref secretName
+          ORGANIZATION_ID: !Ref organizationId
+      Runtime: python3.8
+      Handler: lambda_function.handler
+      Role: !Ref lambdaExecutionRole
+      FunctionName: !Ref gitLambdaFunctionName
+      Code:
+        ZipFile: |
+          import logging
+          import datetime
+          import json
+          import socket
+          def lambda_handler(event, handle):
+              logger.debug('new event received: %s', str(event))
+               return {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": json.dumps({"testkey ": "testval"})
+                }
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref securityGroupId
+        SubnetIds:
+          - !Ref subnetId
+      Description: cidrbot git auth lambda function
+  gitLambdaPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GitLambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub >-
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GitAuthApi}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/${gitLambdaFunctionName}
+  GitAuthApi:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref apiGitAuthName
+      RouteKey: !Sub 'ANY /${gitLambdaFunctionName}'
+      Description: Lambda api for git auth callbacks
+      ProtocolType: HTTP
+      Target: !GetAtt GitLambdaFunction.Arn
+  GitAuthApiMapping:
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      ApiMappingKey: !Ref apiGitAuthMappingKeyName
+      DomainName: !Ref lambdaDomainName
+      ApiId: !Ref GitAuthApi
+      Stage: $default
+  roomsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableRoomsName
+  installationsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: installation_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: installation_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableInstallationsName
+  authRequestsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: state
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: !Ref dbTableAuthName
+  awsSecretsManagerSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+        Name: !Ref awsSecretsName
+        Description: "Private key for cidrbot app"
+        SecretString: !Ref awsSecretsKey

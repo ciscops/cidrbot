@@ -17,6 +17,13 @@ class cmdlist:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
+        # Initialize Bot Id as a global variable
+        if "WEBEX_BOT_ID" in os.environ:
+            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
+        else:
+            logging.error("Environment variable WEBEX_BOT_ID must be set")
+            sys.exit(1)
+
         if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
             self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
@@ -39,7 +46,7 @@ class cmdlist:
     def similar(self, a, b):
         return SequenceMatcher(None, a, b).ratio()
 
-    # Clean the message and detemine what the user typed, then execute the appropiate commands
+    # Clean the message and detemine what the user typed, then execute the appropriate commands
     def message_handler(self, request, event_type, room_id, pt_id):
         if "CIDRBot" in request:
             text = request.replace("CIDRBot", "")
@@ -79,6 +86,7 @@ class cmdlist:
             repo_search.append(i.lower())
 
         user_dict = self.dynamo.user_dict(room_id)
+        #self.logging.debug("User dict: " + str(user_dict))
 
         name_list = []
         for user in user_dict:
@@ -172,16 +180,14 @@ class cmdlist:
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
 
-        if "add repo" in text or "remove repo" in text:
+        if "manage repos" in text:
             if event_type == "Message":
                 #doesn't need to be webex_mod_status - confusing name, change to "webex user"
                 for user in self.webex_mod_status:
                     if user.isModerator:
-                        request = text_split[1] + " " + text_split[2]
-                        name = text_split[3]
-                        if self.git_handle.check_github_repo(name):
-                            return self.dynamo.update_repo_list(name, request, room_id)
-                        return "Invalid repo name, or repo does not exist"
+                        self.git_handle.send_auth_link(self.user_person_id, room_id, pt_id)
+                        return "Check direct messages to complete Github authentication"
+
                     return "That command is only avaliable to space moderators"
             else:
                 return "That command is only avaliable for moderators in the chatroom"
@@ -343,6 +349,7 @@ class cmdlist:
             user_json_details = i.to_dict()
         full_name = user_json_details['personDisplayName']
         name_format = f'<@personId:{user_id}|{user_name}>'
+
         self.dynamo.create_user(webex_msg_sender, user_id, full_name, room_id)
 
         return f"Welcome to Cidrbot Users room {name_format}, type *@CIDRbot help* for a list of commands\n"
@@ -442,14 +449,14 @@ class cmdlist:
             "- **@Cidrbot list issues** -lists unassigned issues\n" +
             "- **@Cidrbot list all issues** -lists all issues\n" + "- **@Cidrbot list my issues**\n" +
             "- **@Cidrbot list issues (Github username)**\n" + "- **@Cidrbot list issues (Webex firstname)**\n" +
-            "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" + "\n"
+            "- **@Cidrbot list issues in (repo)**\n" + "- **@Cidrbot list all issues in (repo)**\n" +
+            "- **@Cidrbot (repo name) (issue number) info** (@Cidrbot repopath/reponame 20 info) \n" + "\n"
         )
         assign_issues_help = (
             f"-Assign/Unassign issue: **@Cidrbot (assign/unassign) (repo) (issue_num) (me, Git username, Webex firstname)**\n"
             + "- **@Cidrbot assign/unassign (repo) (issue_num) (me)**\n" +
             "- **@Cidrbot assign/unassign (repo) (issue_num) (Git username)**\n" +
-            "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" +
-            "- Note: unassigning a pull request is a currently disabled feature\n" + "\n"
+            "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" + "\n"
         )
         syntax_help = (
             f"-Syntax examples:\n" + "- Github username: **ppajersk**  \n" + "- Webex firstname: **Paul**  \n" +
@@ -461,8 +468,7 @@ class cmdlist:
         )
         repos_help = (
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
-            "- **@Cidrbot add repo (repo name)** - only for moderators in chat room\n" +
-            "- **@Cidrbot remove repo (repo name)** - only for moderators in chat room\n" + "\n"
+            "- **@Cidrbot manage repos** - only for moderators in chat room\n"
         )
 
         syntax_end_text = (

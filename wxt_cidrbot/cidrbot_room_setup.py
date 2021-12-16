@@ -27,6 +27,12 @@ class room_setup:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if 'ORGANIZATION_ID' in os.environ:
+            self.org_ID = os.getenv("ORGANIZATION_ID")
+        else:
+            logging.error("Environment variable ORGANIZATION_ID must be set")
+            sys.exit(1)
+
         if 'TARGET_URL' in os.environ:
             self.targetURL = os.getenv("TARGET_URL")
         else:
@@ -40,54 +46,59 @@ class room_setup:
 
     def invited(self, json_string):
         user_id = json_string['data']['personId']
+        room_owner = json_string['actorId']
+
+        user_org = self.Api.people.get(room_owner).orgId
 
         if self.webex_bot_id == user_id:
-            room_id = json_string['data']['roomId']
+            if self.org_ID == user_org:
+                room_id = json_string['data']['roomId']
 
-            members = self.Api.memberships.list(roomId=room_id)
-            member_count = 0
-            member_info = []
-            member_list = []
+                members = self.Api.memberships.list(roomId=room_id)
+                member_count = 0
+                member_info = []
+                member_list = []
 
-            for i in members:
-                i = i.to_dict()
-                if i['personEmail'] != "CIDRBot@webex.bot":
-                    member_count += 1
-                    name = str(i['personDisplayName']).split(" ", 1)[0]
-                    user_email = str(i['personEmail']).split("@", 1)[0]
-                    person_id = i['personId']
-                    if name not in member_list:
-                        member_list.append(name)
-                        dup = False
-                    else:
-                        member_list.append(user_email)
-                        dup = True
+                for i in members:
+                    i = i.to_dict()
+                    if i['personEmail'] != "CIDRBot@webex.bot":
+                        member_count += 1
+                        name = str(i['personDisplayName']).split(" ", 1)[0]
+                        user_email = str(i['personEmail']).split("@", 1)[0]
+                        person_id = i['personId']
+                        if name not in member_list:
+                            member_list.append(name)
+                            dup = False
+                        else:
+                            member_list.append(user_email)
+                            dup = True
 
-                    member_info.append({
-                        'user_email': user_email,
-                        'first_name': name,
-                        'duplicate': dup,
-                        'person_id': person_id
-                    })
+                        member_info.append({
+                            'user_email': user_email,
+                            'first_name': name,
+                            'duplicate': dup,
+                            'person_id': person_id
+                        })
 
-            text = f"Hello, thank you for adding cidrbot to your room, one moment while I set things up: \n - Setting up webhooks..."
-            post_message = {'roomId': room_id, 'markdown': text}
+                text = f"Hello, thank you for adding cidrbot to your room, one moment while I set things up: \n - Setting up webhooks..."
+                post_message = {'roomId': room_id, 'markdown': text}
 
-            message_id = self.post_message(post_message)
+                message_id = self.post_message(post_message)
 
-            text += f"\n - Webhook setup complete"
-            self.webex.edit_message(message_id, text, room_id)
+                text += f"\n - Webhook setup complete"
+                self.webex.edit_message(message_id, text, room_id)
 
-            id_list = self.webex_webhook_setup(room_id)
-            self.dynamo.create_room(room_id, member_info, id_list)
+                id_list = self.webex_webhook_setup(room_id)
+                self.dynamo.create_room(room_id, member_info, id_list)
 
-            text += f"\n - Room setup complete \n\n To begin using cidrbot's github features, type **@CIDRbot add repo** \n For a list of commands type **@CIDRbot help**"
-            self.webex.edit_message(message_id, text, room_id)
+                text += f"\n - Room setup complete \n\n To begin type **@CIDRbot manage repos** \n For a list of commands type **@CIDRbot help**"
+                self.webex.edit_message(message_id, text, room_id)
 
     def webex_webhook_setup(self, room_id):
         room_filter = "roomId=" + room_id
         id_list = []
 
+        #for webhook generating, add a secret to the webhooks
         post_data_message = {
             'name': "Message",
             'targetUrl': self.targetURL,
