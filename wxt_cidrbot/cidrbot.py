@@ -17,17 +17,17 @@ class cidrbot:
         logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
         self.logging = logging.getLogger()
 
-        if "WEBEX_BOT_ID" in os.environ:
-            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
-        else:
-            logging.error("Environment variable WEBEX_BOT_ID must be set")
-            sys.exit(1)
-
         if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
             self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
+
+        if "WEBEX_BOT_ID" in os.environ:
+            self.webex_bot_id = os.getenv("WEBEX_BOT_ID")
+        else:
+            logging.error("Environment variable WEBEX_BOT_ID must be set")
+            sys.exit(1)    
 
         if 'ORGANIZATION_ID' in os.environ:
             self.orgID = os.getenv("ORGANIZATION_ID")
