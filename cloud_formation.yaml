@@ -27,12 +27,6 @@ Parameters:
   appClientSecret:
     Type: String
     Default: ''
-  secretKey:
-    Type: String
-    Default: ''
-  secretName:
-    Type: String
-    Default: ''
   apiGitAuthMappingKeyName:
     Type: String
     Default: cidr-git-auth
@@ -57,34 +51,16 @@ Parameters:
   lambdaExecutionRole:
     Type: String
     Default: ''
-  baseWebhookPath:
-    Type: String
-    Default: ''
-  githubWebhookPath:
-    Type: String
-    Default: ''
   organizationId:
     Type: String
     Default: ''
   regionName:
     Type: String
     Default: ''
-  targetUrl:
-    Type: String
-    Default: ''
   webexBotId:
     Type: String
     Default: ''
   webexAccessToken:
-    Type: String
-    Default: ''
-  callBackUrl:
-    Type: String
-    Default: ''
-  clientId:
-    Type: String
-    Default: ''
-  clientSecret:
     Type: String
     Default: ''
   apiGatewayStageName:
@@ -118,31 +94,26 @@ Parameters:
     Type: String
     AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
     Default: timer-daily
-  refreshTimerName:
-    Type: String
-    AllowedPattern: '[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+'
-    Default: timer-refresh
 Resources:
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
       Environment:
         Variables:
-          GITHUB_WEBHOOK_PATH: !Ref githubWebhookPath
-          BASE_WEBHOOK_PATH: !Ref baseWebhookPath
+          GITHUB_WEBHOOK_PATH: !Sub '${apiGitMappingKeyName}/${lambdaFunctionName}'
+          BASE_WEBHOOK_PATH: !Sub '/${lambdaFunctionName}'
           DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
           DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
           DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
           ORGANIZATION_ID: !Ref organizationId
           REGION_NAME: !Ref regionName
-          TARGET_URL: !Ref targetUrl
+          TARGET_URL: !Sub 'https://${lambdaDomainName}/${lambdaFunctionName}'
           WEBEX_BOT_ID: !Ref webexBotId
           WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
           APP_ID: !Ref appId
           CLIENTID: !Ref appClientId
           CLIENTSECRET: !Ref appClientSecret
-          SECRET_KEY: !Ref secretKey
-          SECRET_NAME: !Ref secretName
+          SECRET_NAME: !Ref awsSecretsName
       Runtime: python3.8
       Handler: lambda_function.handler
       Role: !Ref lambdaExecutionRole
@@ -287,9 +258,9 @@ Resources:
     Properties:
       Environment:
         Variables:
-          CALLBACKURL: !Ref callBackUrl
-          CLIENTID: !Ref clientId
-          CLIENTSECRET: !Ref clientSecret
+          CALLBACKURL: !Sub 'https://${lambdaDomainName}/${apiGitAuthMappingKeyName}/${gitLambdaFunctionName}'
+          CLIENTID: !Ref appClientId
+          CLIENTSECRET: !Ref appClientSecret
           DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
           DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
           DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
@@ -297,7 +268,7 @@ Resources:
           WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
           APP_ID: !Ref appId
           REGION_NAME: !Ref regionName
-          SECRET_NAME: !Ref secretName
+          SECRET_NAME: !Ref awsSecretsName
           ORGANIZATION_ID: !Ref organizationId
       Runtime: python3.8
       Handler: lambda_function.handler

@@ -11,7 +11,6 @@ Lambda based bot that aids in CL pipeline by giving users an interface to intera
   * Webex teams bot
   * Github account    
 
-
 ## Description
 
 Cidrbot is is a Webex Teams bot which relies on AWS infrastructure to provide a medium
@@ -108,70 +107,55 @@ Moving forward, all parts of cidrbot which rely on AWS will be set up by cloud f
         the user. This is a short file but needed since the webexteamssdk does not
         support this feature, however the rest api does.
 
-#### Creating a webex bot
-
-    Note: When creating, hold on to the access token, this is needed inside
-    the lambda function to connect to the webex bot and send messages through
-    it to the cidrbot room
-
-* [Create a webex bot](https://developer.webex.com/docs/bots)
+## Deploying
 
 
-#### Webhooks:
+Steps to deploy the cloud formation as well as upload all the necessary code to the lambda functions
 
-    Cidrbot uses 4 main webhooks from webex. These can be created by following
-    the link and using the appropriate arguments listed below. It's crucial
-    to use the bots access token when creating the webhook for direct messages!
-
-    - Webex: https://developer.webex.com/docs/api/v1/webhooks/create-a-webhook
-
-    1) Message webhook for when a user sends a message inside the cidrbot room
-      - Authorization: Use bot's access token!
-      - name: "Message"
-      - targetUrl: (Aws Custom domain name)
-      - resource: "messages"
-      - event: "created"
-      - filter: roomId=(room id where the bot will operate)
-
-    2)  Message webhook for when a user sends cidrbot a direct message
-      - Authorization: Use bot's access token!
-      - name: "Direct Message"
-      - targetUrl: (Aws Custom domain name)
-      - resource: "messages"
-      - event: "created"
-      - filter: "roomType=direct"
-
-    3)  Memberships Webhook for when a user enters the cidrbot room
-      - Authorization: Use bot's access token!
-      - name: "New user"
-      - targetUrl: (Aws Custom domain name)
-      - resource: "memberships"
-      - event: "created"
-      - filter: roomId=(room id where the bot will operate)
-
-    4)  Memberships Webhook for when a user enters the cidrbot room
-      - Authorization: Use bot's access token!
-      - name: "User left"
-      - targetUrl: (Aws Custom domain name)
-      - resource: "memberships"
-      - event: "deleted"
-      - filter: roomId=(room id where the bot will operate)    
-
-* [Aws Custom domain name](https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-custom-domains.html)
+1) * [Create a webex bot](https://developer.webex.com/docs/bots)
+From webex bot creation, save the following: Webex bot id, Webex bot access token
 
 
+2) * [Create a github app](https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app)
+From github bot creation, save the following: App ID, Client ID, Client Secret, Private key
+Leave all the current settings as is for now
 
-#### Github
+3) In cloud_formation.yaml, parameters should be set up as follows: (replace the empty string in the "default:" section)
+    - For awsSecretsKey, paste the literal contents of the Private key for the github app (which comes as a pem file)
+    - For appId, appClientId, appClientSecret, use the secrets and ids you saved from step 2
+    - For securityPolicyName, securityGroupId, subnetId, lambdaExecutionRole, paste in desired values according to how the aws account is setup
+    - For organizationId, enter in the webex org id for the organization using the webex bot
+    - For regionName, enter the region of the aws account that the aws secrets manager and lambda function both share
+    - For webexBotId, webexAccessToken, use the values from step 1
+    - For lambdaDomainName, this will be the name you use for the custom domain name inside Apigateway
+    - For lambdaAcmCert, fill this out with the necessary cert
+    - For route53RecordGroupSetHostedZone, provide the necessary hosted zone id
+    - For any values that are pre-filled, leave these alone
 
-      Creating a Github account for cidrbot is necessary for assigning issues/prs
-      as well as increasing the ratelimit of api calls from 60/hour to
-      1,000 per hour per repo.
+4) Run the following command to push the cloud formation template into a desired aws account:
+    - "aws cloudformation deploy --stack-name desired_stack_name_here --template-file cloud_formation.yaml"
 
-      Remember to hang onto the access token, as well as giving the token the needed
-      permissions to assign/unassign issues/prs. This account will need to be added
-      to an org or repo, and given triage access. (Note triage access does not allow
-      unassigning requested reviewers from a pull request)
+5) Pushing code into both lambda functions
+    - In the make file, ensure lines 5 and 6, match the lambda function names entered in the cloud formation file, with the github lambda function name in line 5, and the main lambda function name on line 6
+    (In cloud_formation.yaml they are referenced in the parameters as gitLambdaFunctionName and lambdaFunctionName respectively)
+    - Ensure on line 11, that PYDIRS=wxt_cidrbot for the first make file code push
+    - (note on macs, run "make build-container" then "make lambda-packages-docker" then run the two following commands)
+    Run the following commands: (make lambda-layer-cidrbot) then (make lambda-upload-cidrbot)
+    - On line 11, change PYDIRS=wxt_cidrbot to PYDIRS=git_cidrbot
+    - Run the following commands: (make lambda-layer-gitauth) then (make lambda-upload-gitauth)
 
+6) In the github app ui, set the Callback URL to the value stored in the environment variables for the git lambda function. It will be the value for the key "CALLBACKURL"
+    - Check the button underneath for "Request user authorization (OAuth) during installation"
+    - Under "webhook" check the button for "active" and in the "webhook url" box, set the url to
+    "https://" + 1 + / + 2
+    1. (custom domain name specified in cloud_formation under lambdaDomainName)
+    2. (the value for the key "GITHUB_WEBHOOK_PATH" in environment variables for the main lambda function)
+
+7) Permissions for github app in the ui
+    - Discussions : Read & write
+    - Issues : Read & write
+    - Metadata : Read only
+    - Pull requests : Read & write
 
 #### Build on MacOS
 
