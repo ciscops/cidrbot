@@ -184,7 +184,15 @@ Resources:
       ApiMappingKey: !Ref apiGitMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref ApiGit
-      Stage: $default
+      Stage: !Ref gitApiStage
+  gitApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGit
+      StageName: github
+      AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt cidrLoggingGroup.Arn
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -201,6 +209,11 @@ Resources:
       HostedZoneId: !Ref route53RecordGroupSetHostedZone
       Name: !Ref lambdaDomainName
       Type: A
+  cidrLoggingGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: /cidr/cidrbot
   DailyTimerRuleTest:
     Type: 'AWS::Events::Rule'
     Properties:
@@ -314,7 +327,7 @@ Resources:
       ApiMappingKey: !Ref apiGitAuthMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref GitAuthApi
-      Stage: $github
+      Stage: $Default
   roomsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
