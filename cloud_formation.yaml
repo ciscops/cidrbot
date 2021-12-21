@@ -191,14 +191,6 @@ Resources:
       ApiId: !Ref ApiGit
       StageName: github
       AutoDeploy: true
-      AccessLogSettings:
-        DestinationArn: !GetAtt cidrLoggingGroup.Arn
-        Format: >-
-          {"requestId":"$context.requestId", "ip": "$context.identity.sourceIp",
-          "caller":"$context.identity.caller",
-          "user":"$context.identity.user","requestTime":"$context.requestTime",
-          "eventType":"$context.eventType","routeKey":"$context.routeKey",
-          "status":"$context.status","connectionId":"$context.connectionId"}
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -215,11 +207,6 @@ Resources:
       HostedZoneId: !Ref route53RecordGroupSetHostedZone
       Name: !Ref lambdaDomainName
       Type: A
-  cidrLoggingGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      RetentionInDays: 7
-      LogGroupName: /cidr/cidrbot
   DailyTimerRuleTest:
     Type: 'AWS::Events::Rule'
     Properties:
