@@ -191,6 +191,8 @@ Resources:
       ApiId: !Ref ApiGit
       StageName: github
       AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt myLogGroup.Arn
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -207,6 +209,10 @@ Resources:
       HostedZoneId: !Ref route53RecordGroupSetHostedZone
       Name: !Ref lambdaDomainName
       Type: A
+  myLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
   DailyTimerRuleTest:
     Type: 'AWS::Events::Rule'
     Properties:
