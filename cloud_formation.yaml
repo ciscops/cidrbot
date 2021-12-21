@@ -184,7 +184,13 @@ Resources:
       ApiMappingKey: !Ref apiGitMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref ApiGit
-      Stage: $default
+      Stage: !Ref gitApiStage
+  gitApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGit
+      StageName: github
+      AutoDeploy: true
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -314,7 +320,7 @@ Resources:
       ApiMappingKey: !Ref apiGitAuthMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref GitAuthApi
-      Stage: $github
+      Stage: $Default
   roomsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
