@@ -112,6 +112,7 @@ Resources:
           CLIENTSECRET: !Ref appClientSecret
           SECRET_NAME: !Ref awsSecretsName
       Runtime: python3.8
+      Timeout: 180
       Handler: lambda_function.lambda_handler
       Role: !Ref lambdaExecutionRole
       FunctionName: !Ref lambdaFunctionName
@@ -267,6 +268,7 @@ Resources:
           SECRET_NAME: !Ref awsSecretsName
           ORGANIZATION_ID: !Ref organizationId
       Runtime: python3.8
+      Timeout: 180
       Handler: lambda_function.lambda_handler
       Role: !Ref lambdaExecutionRole
       FunctionName: !Ref gitLambdaFunctionName
