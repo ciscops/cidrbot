@@ -194,11 +194,11 @@ Resources:
       AccessLogSettings:
         DestinationArn: !GetAtt cidrLoggingGroup.Arn
         Format: >-
-        {"requestId":"$context.requestId", "ip": "$context.identity.sourceIp",
-        "caller":"$context.identity.caller",
-        "user":"$context.identity.user","requestTime":"$context.requestTime",
-        "eventType":"$context.eventType","routeKey":"$context.routeKey",
-        "status":"$context.status","connectionId":"$context.connectionId"}
+          {"requestId":"$context.requestId", "ip": "$context.identity.sourceIp",
+          "caller":"$context.identity.caller",
+          "user":"$context.identity.user","requestTime":"$context.requestTime",
+          "eventType":"$context.eventType","routeKey":"$context.routeKey",
+          "status":"$context.status","connectionId":"$context.connectionId"}
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
