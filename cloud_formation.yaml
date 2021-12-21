@@ -97,7 +97,6 @@ Resources:
     Properties:
       Environment:
         Variables:
-          GITHUB_WEBHOOK_PATH: !Sub '/${apiGitMappingKeyName}/${lambdaFunctionName}'
           BASE_WEBHOOK_PATH: !Sub '/${lambdaFunctionName}'
           DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
           DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
@@ -315,7 +314,7 @@ Resources:
       ApiMappingKey: !Ref apiGitAuthMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref GitAuthApi
-      Stage: $default
+      Stage: $github
   roomsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
