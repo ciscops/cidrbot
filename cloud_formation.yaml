@@ -180,6 +180,8 @@ Resources:
       Stage: $default
   ApiMappingGit:
     Type: 'AWS::ApiGatewayV2::ApiMapping'
+    DependsOn:
+      - gitApiStage
     Properties:
       ApiMappingKey: !Ref apiGitMappingKeyName
       DomainName: !Ref lambdaDomainName
@@ -320,7 +322,7 @@ Resources:
       ApiMappingKey: !Ref apiGitAuthMappingKeyName
       DomainName: !Ref lambdaDomainName
       ApiId: !Ref GitAuthApi
-      Stage: $Default
+      Stage: $default
   roomsTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
