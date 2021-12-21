@@ -22,20 +22,14 @@ def lambda_handler(event, handle):
         logging.error("Environment variable GITHUB_WEBHOOK_PATH must be set")
         sys.exit(1)
 
-    if "BASE_WEBHOOK_PATH" in os.environ:
-        base_webhook_path = os.getenv("BASE_WEBHOOK_PATH")
-    else:
-        logging.error("Environment variable BASE_WEBHOOK_PATH must be set")
-        sys.exit(1)
-
     cidr = cidrbot()
     git = gitwebhook()
     # Determine the type of event and execute the correct function
 
-    if 'rawPath' in event:
-        if event['rawPath'] == webhook_path:
+    if 'rawPath' in event and event['rawPath'] == webhook_path:
+        if event['requestContext']['stage'] == '$github':
             git.webhook_request(event)
-        elif event['rawPath'] == base_webhook_path:
+        elif event['requestContext']['stage'] == '$default':
             cidr.webhook_request(event)
 
     if event.get("Type") == "Timer":
