@@ -192,7 +192,7 @@ Resources:
       StageName: github
       AutoDeploy: true
       AccessLogSettings:
-        DestinationArn: !GetAtt /cidr/cidrbot.Arn
+        DestinationArn: !GetAtt cidrLoggingGroup.Arn
   ApiDomainName:
     Type: 'AWS::ApiGatewayV2::DomainName'
     Properties:
@@ -209,10 +209,11 @@ Resources:
       HostedZoneId: !Ref route53RecordGroupSetHostedZone
       Name: !Ref lambdaDomainName
       Type: A
-  /cidr/cidrbot:
+  cidrLoggingGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 7
+      LogGroupName: /cidr/cidrbot
   DailyTimerRuleTest:
     Type: 'AWS::Events::Rule'
     Properties:
