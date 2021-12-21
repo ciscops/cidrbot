@@ -100,7 +100,7 @@ Resources:
     Properties:
       Environment:
         Variables:
-          GITHUB_WEBHOOK_PATH: !Sub '${apiGitMappingKeyName}/${lambdaFunctionName}'
+          GITHUB_WEBHOOK_PATH: !Sub '/${apiGitMappingKeyName}/${lambdaFunctionName}'
           BASE_WEBHOOK_PATH: !Sub '/${lambdaFunctionName}'
           DYNAMODB_AUTH_TABLE: !Ref dbTableAuthName
           DYNAMODB_INSTALLATION_TABLE: !Ref dbTableInstallationsName
@@ -115,7 +115,7 @@ Resources:
           CLIENTSECRET: !Ref appClientSecret
           SECRET_NAME: !Ref awsSecretsName
       Runtime: python3.8
-      Handler: lambda_function.handler
+      Handler: lambda_function.lambda_handler
       Role: !Ref lambdaExecutionRole
       FunctionName: !Ref lambdaFunctionName
       Code:
@@ -271,7 +271,7 @@ Resources:
           SECRET_NAME: !Ref awsSecretsName
           ORGANIZATION_ID: !Ref organizationId
       Runtime: python3.8
-      Handler: lambda_function.handler
+      Handler: lambda_function.lambda_handler
       Role: !Ref lambdaExecutionRole
       FunctionName: !Ref gitLambdaFunctionName
       Code:
