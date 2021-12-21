@@ -16,10 +16,10 @@ def lambda_handler(event, handle):
     logger.debug(str(handle))
     start_time = datetime.datetime.now()
 
-    if "GITHUB_WEBHOOK_PATH" in os.environ:
-        webhook_path = os.getenv("GITHUB_WEBHOOK_PATH")
+    if "BASE_WEBHOOK_PATH" in os.environ:
+        webhook_path = os.getenv("BASE_WEBHOOK_PATH")
     else:
-        logging.error("Environment variable GITHUB_WEBHOOK_PATH must be set")
+        logging.error("Environment variable BASE_WEBHOOK_PATH must be set")
         sys.exit(1)
 
     cidr = cidrbot()
