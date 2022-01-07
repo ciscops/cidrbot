@@ -84,6 +84,12 @@ class gitauth:
             logging.error("Environment variable APP_ID must be set")
             sys.exit(1)
 
+        if 'GITHUB_BOT_NAME' in os.environ:
+            self.git_bot_name = os.getenv("GITHUB_BOT_NAME")
+        else:
+            logging.error("Environment variable GITHUB_BOT_NAME must be set")
+            sys.exit(1)
+
         self.dynamodb = ""
         self.table = ''
         self.Api = WebexTeamsAPI()
@@ -122,7 +128,7 @@ class gitauth:
                         302,
                         "headers": {
                             "Content-Type": "application/json",
-                            "Refresh": "15; url=https://github.com/apps/cidrbot"
+                            "Refresh": "15; url=https://github.com/apps/" + self.git_bot_name
                         },
                         "body":
                         json.dumps({
@@ -211,7 +217,7 @@ class gitauth:
                         302,
                         "headers": {
                             "Content-Type": "application/json",
-                            "Refresh": "15; url=https://github.com/apps/cidrbot"
+                            "Refresh": "15; url=https://github.com/apps/" + self.git_bot_name
                         },
                         "body":
                         json.dumps({

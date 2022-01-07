@@ -35,6 +35,12 @@ class cidrbot:
             logging.error("Environment variable ORGANIZATION_ID must be set")
             sys.exit(1)
 
+        if 'WEBEX_BOT_NAME' in os.environ:
+            self.bot_name = os.getenv("WEBEX_BOT_NAME")
+        else:
+            logging.error("Environment variable WEBEX_BOT_NAME must be set")
+            sys.exit(1)
+
         # Initialize Api
         self.Api = WebexTeamsAPI()
 
@@ -118,7 +124,7 @@ class cidrbot:
             user_name = self.Api.people.get(user_id).firstName
             text = self.get_command.new_user(json_string, webex_msg_sender, user_name, self.roomID)
             self.send_wbx_msg(self.roomID, text, None)
-        elif event_type == "Bot add to room":
+        elif event_type == "Bot add to room" and json_string['data']['roomType'] != 'direct':
             self.logging.debug("bot added to room")
             self.room_handle.invited(json_string)
         elif event_type == "User left":
@@ -156,7 +162,7 @@ class cidrbot:
                 self.logging.debug("User left")
                 self.dynamo.delete_user(webex_msg_sender, self.roomID)
 
-        elif webex_msg_sender != "CIDRBot@webex.bot":
+        elif webex_msg_sender != self.bot_name + "@webex.bot":
             if org_id == self.orgID:
                 self.message_event(json_string, event_type, webex_msg_sender)
 

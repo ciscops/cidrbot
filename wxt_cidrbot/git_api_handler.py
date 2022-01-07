@@ -30,6 +30,12 @@ class githandler:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if 'GITHUB_BOT_NAME' in os.environ:
+            self.git_bot_name = os.getenv("GITHUB_BOT_NAME")
+        else:
+            logging.error("Environment variable GITHUB_BOT_NAME must be set")
+            sys.exit(1)
+
         # Init sibling py files and used global vars
         self.Api = WebexTeamsAPI()
         self.dynamo = dynamo_api_handler.dynamoapi()
@@ -259,7 +265,7 @@ class githandler:
         return False
 
     def send_auth_link(self, person_id, room_id, pt_id):
-        link = "https://github.com/apps/cidrbot/installations/new?state="
+        link = "https://github.com/apps/" + self.git_bot_name + "/installations/new?state="
         state_value = {"personId": person_id, "roomId": room_id, "ptId": pt_id}
 
         alphabet = string.ascii_letters + string.digits
