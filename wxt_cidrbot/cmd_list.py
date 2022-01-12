@@ -30,6 +30,12 @@ class cmdlist:
             logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
+        if 'WEBEX_BOT_NAME' in os.environ:
+            self.bot_name = os.getenv("WEBEX_BOT_NAME")
+        else:
+            logging.error("Environment variable WEBEX_BOT_NAME must be set")
+            sys.exit(1)
+
         # Init sibling py files and used global vars
         self.git_handle = git_api_handler.githandler()
         self.dynamo = dynamo_api_handler.dynamoapi()
@@ -48,8 +54,8 @@ class cmdlist:
 
     # Clean the message and detemine what the user typed, then execute the appropriate commands
     def message_handler(self, request, event_type, room_id, pt_id):
-        if "CIDRBot" in request:
-            text = request.replace("CIDRBot", "")
+        if self.bot_name in request:
+            text = request.replace(self.bot_name, "")
             text = text.lstrip()
             text = text.lower()
             text_split = text.split(" ")

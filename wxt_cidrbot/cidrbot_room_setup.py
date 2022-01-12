@@ -39,6 +39,12 @@ class room_setup:
             logging.error("Environment variable TARGET_URL must be set")
             sys.exit(1)
 
+        if 'WEBEX_BOT_NAME' in os.environ:
+            self.bot_name = os.getenv("WEBEX_BOT_NAME")
+        else:
+            logging.error("Environment variable WEBEX_BOT_NAME must be set")
+            sys.exit(1)
+
         self.Api = WebexTeamsAPI()
         self.get_command = cmd_list.cmdlist()
         self.dynamo = dynamo_api_handler.dynamoapi()
@@ -61,7 +67,7 @@ class room_setup:
 
                 for i in members:
                     i = i.to_dict()
-                    if i['personEmail'] != "CIDRBot@webex.bot":
+                    if i['personEmail'] != self.bot_name + "@webex.bot":
                         member_count += 1
                         name = str(i['personDisplayName']).split(" ", 1)[0]
                         user_email = str(i['personEmail']).split("@", 1)[0]

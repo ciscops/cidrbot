@@ -26,10 +26,10 @@ def lambda_handler(event, handle):
     git = gitwebhook()
     # Determine the type of event and execute the correct function
 
-    if 'rawPath' in event and event['rawPath'] == webhook_path:
-        if event['requestContext']['stage'] == 'github':
+    if 'rawPath' in event:
+        if event['rawPath'] == '/github' + webhook_path:
             git.webhook_request(event)
-        elif event['requestContext']['stage'] == '$default':
+        if event['rawPath'] == webhook_path:
             cidr.webhook_request(event)
 
     if event.get("Type") == "Timer":

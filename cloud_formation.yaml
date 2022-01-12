@@ -60,6 +60,12 @@ Parameters:
   webexAccessToken:
     Type: String
     Default: ''
+  webexBotName:
+    Type: String
+    Default: ''
+  githubBotName:
+    Type: String
+    Default: ''
   apiGatewayStageName:
     Type: String
     Default: '*'
@@ -106,6 +112,8 @@ Resources:
           TARGET_URL: !Sub 'https://${lambdaDomainName}/${lambdaFunctionName}'
           WEBEX_BOT_ID: !Ref webexBotId
           WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+          WEBEX_BOT_NAME: !Ref webexBotName
+          GITHUB_BOT_NAME: !Ref githubBotName
           APP_ID: !Ref appId
           CLIENTID: !Ref appClientId
           CLIENTSECRET: !Ref appClientSecret
@@ -270,6 +278,7 @@ Resources:
           DYNAMODB_ROOM_TABLE: !Ref dbTableRoomsName
           WEBEX_BOT_ID: !Ref webexBotId
           WEBEX_TEAMS_ACCESS_TOKEN: !Ref webexAccessToken
+          GITHUB_BOT_NAME: !Ref githubBotName
           APP_ID: !Ref appId
           REGION_NAME: !Ref regionName
           SECRET_NAME: !Ref awsSecretsName
