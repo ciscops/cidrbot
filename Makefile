@@ -2,13 +2,15 @@
 PYTHON_EXE = python3
 # PROJECT_NAME is used to create the virtualenv name
 PROJECT_NAME="cidrbot"
-LAMBDA_GITAUTH_FUNCTION_NAME="ppajersk-cidrbot-gitauth"
-LAMBDA_CIDRBOT_FUNCTION_NAME="ppajersk-cidrbot"
+LAMBDA_GITAUTH_FUNCTION_NAME="cidrbot-gitauth"
+LAMBDA_CIDRBOT_FUNCTION_NAME="cidrbot"
 TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
 # For GitAuth function, PYDIRS=git_cidrbot
 # For CIDRBOT function, PYDIRS=wxt_cidrbot
-PYDIRS=wxt_cidrbot
+PYDIRS_WXT=wxt_cidrbot
+PYDIRS_GH=git_cidrbot
+PYDIRS=$(PYDIRS_WXT) $(PYDIRS_GH)
 VENV = venv_$(PROJECT_NAME)
 VENV_BIN=$(VENV)/bin
 SRC_FILES := $(shell find $(PYDIRS) -name \*.py)
@@ -80,6 +82,7 @@ clean: ## Clean python-viptela $(VENV)
 	$(RM) -rf *.eggs
 	$(RM) -rf docs/api/*
 	find . -name "*.pyc" -exec $(RM) -rf {} \;
+	$(RM) -f *.zip
 
 clean-docs-html:
 	$(RM) -rf docs/build/html
@@ -133,11 +136,11 @@ lambda-layer-cidrbot: lambda-packages.zip
 
 lambda-function-gitauth.zip: cidr_git_lambda_function.py ## Output all code to zip file
 	cp cidr_git_lambda_function.py lambda_function.py
-	zip -r $@ lambda_function.py $(PYDIRS) # zip all python source code into output.zip
+	zip -r $@ lambda_function.py $(PYDIRS_GH) # zip all python source code into output.zip
 
 lambda-function-cidrbot.zip: cidrbot_run.py ## Output all code to zip file
 	cp cidrbot_run.py lambda_function.py
-	zip -r $@ lambda_function.py $(PYDIRS) # zip all python source code into output.zip
+	zip -r $@ lambda_function.py $(PYDIRS_WXT) # zip all python source code into output.zip
 
 # Upload layer for gitauth lambda function
 lambda-upload-gitauth:lambda-function-gitauth.zip ## Deploy all code to aws
@@ -150,6 +153,12 @@ lambda-upload-cidrbot:lambda-function-cidrbot.zip ## Deploy all code to aws
 	aws lambda update-function-code \
 	--function-name $(LAMBDA_CIDRBOT_FUNCTION_NAME) \
 	--zip-file fileb://lambda-function-cidrbot.zip
+
+upload-functions:
+	make clean clean-lambda
+	make lambda-upload-cidrbot
+	make clean clean-lambda
+	make lambda-upload-gitauth
 
 build-container:
 	docker build -t lambda-builder:latest .
