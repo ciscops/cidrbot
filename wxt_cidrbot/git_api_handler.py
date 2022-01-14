@@ -167,7 +167,7 @@ class githandler:
         for repository in repo_names:
             repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
             self.headers = {'Authorization': 'token ' + repo_token}
-            if edit_status and msg_edit_num < 10:
+            if edit_status and msg_edit_num < 9:
                 message_repo = repository.upper()
                 message += f"\n - Finding issues in repo: {message_repo}..."
                 self.webex.edit_message(self.msg_edit_id, message, self.room_id)
