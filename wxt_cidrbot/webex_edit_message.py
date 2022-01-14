@@ -30,4 +30,4 @@ class webex_message:
         if response.status_code == 200:
             self.logging.debug("Message updated successfully")
         else:
-            self.logging.debug(response.status_code, response.text)
+            self.logging.debug("Status code: %s Error message: %s", response.status_code, response.text)
