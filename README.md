@@ -160,11 +160,14 @@ Leave all the current settings as is for now
 5) Pushing code into both lambda functions
     - In the make file, ensure lines 5 and 6, match the lambda function names entered in the cloud formation file, with the github lambda function name in line 5, and the main lambda function name on line 6
     (In cloud_formation.yaml they are referenced in the parameters as gitLambdaFunctionName and lambdaFunctionName respectively)
-    - Ensure on line 11, that PYDIRS=wxt_cidrbot for the first make file code push
     - (note on macs, run "make build-container" then "make lambda-packages-docker" then run the two following commands)
     Run the following commands: (make lambda-layer-cidrbot) then (make lambda-upload-cidrbot)
-    - On line 11, change PYDIRS=wxt_cidrbot to PYDIRS=git_cidrbot
-    - Run the following commands: (make lambda-layer-gitauth) then (make lambda-upload-gitauth)
+    - In aws lambda console, add the layers to the lambda functions before continuing
+    - Run the following commands:
+    1) make clean clean-lambda
+  	2) make lambda-upload-cidrbot
+  	3) make clean clean-lambda
+  	4) make lambda-upload-gitauth
 
 6) Configuring Github app with correct webhook and callback urls (in Github ui)
     The values in parentheses can be fine as parameters in the cloud formation file
@@ -187,6 +190,19 @@ Leave all the current settings as is for now
     Using the link above, create the following two webhooks
         - (Use bot's access token)(name : 'Direct Message')(targetUrl)(resource : 'messages')('event' : 'created')('filter': 'roomType=direct')
         - (Use bot's access token)(name : 'Bot add to room')(targetUrl)(resource : 'memberships')('event' : 'created')
+
+9) Enabling the timed actions:
+    - To ensure the daily and weekly reminders work, in aws console, enable both timers as they are set to off by default        
+
+    - Side note, testing the daily and weekly reminders:
+    Create an aws lambda test with the values
+
+     - { "Type": "Timer"}
+     and for test 2
+     - { "Type": "Weekly Timer"}
+
+     Timer will send the daily room message with all issues and prs
+     Weekly timer will send all users with reminders enabled, a direct message to review the issues/prs assigned to them.
 #### Build on MacOS
 
 ##### Create builder image (only needs to be done once)
