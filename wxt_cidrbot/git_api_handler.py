@@ -121,7 +121,20 @@ class githandler:
         url = issue['html_url']
         hyperlink_format = f'<a href="{url}">{title}</a>'
 
-        text = f"- {issue_type} #{issue_num}: {hyperlink_format}"
+        self.logging.debug(issue)
+        updated_time = issue['updated_at']
+        date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
+        timespan = datetime.today() - date
+        days = timespan.days
+
+        if days < 2:
+            issue_color_code = "&#x1F7E2;" #html code for green
+        elif 2 <= days <= 7:
+            issue_color_code = "&#128992;" #html code for orange
+        else:
+            issue_color_code = "&#128308;" #html code for red
+
+        text = f"- {issue_color_code}{issue_type} #{issue_num}: {hyperlink_format}"
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
@@ -188,7 +201,8 @@ class githandler:
             if all_prs.status_code != 200 or all_issues.status_code != 200:
                 break
 
-            for pr in all_prs.json():
+            pr_json = all_prs.json()
+            for pr in pr_json:
                 number = pr['number']
                 if request == "List":
                     text = self.process_issue(pr, request, 'Pr', number, assign_type)
@@ -202,7 +216,8 @@ class githandler:
                     )
                     issue_num += 1
 
-            for issue in all_issues.json():
+            issue_json = all_issues.json()
+            for issue in issue_json:
                 number = issue['number']
                 if request == "List":
                     if 'pull_request' not in issue:
@@ -224,7 +239,7 @@ class githandler:
                 full_text += "\n"
 
         if request == "List":
-            full_text += f"\n \n Type **@Cidrbot help** for assigning options"
+            full_text += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
             return full_text
         return issue_dict
 
@@ -333,10 +348,8 @@ class githandler:
 
                 timespan = datetime.today() - date
                 timespan_created = datetime.today() - date_created
-                timespan = str(timespan).split(", ")[0]
-                timespan_created = str(timespan_created).split(", ")[0]
-                last_seen = f"Last seen: {timespan}"
-                created = f"Created: {timespan_created} ago"
+                last_seen = f"Last seen: {timespan.days} days"
+                created = f"Created: {timespan_created.days} days ago"
 
                 hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
                 name_hyperlink = f'<a href="{issue.user.html_url}">{issue.user.login}</a>'
