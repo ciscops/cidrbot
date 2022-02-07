@@ -128,11 +128,11 @@ class githandler:
         days = timespan.days
 
         if days < 2:
-            issue_color_code = "&#x1F7E2;" #html code for green
+            issue_color_code = "&#x1F7E2;"  #html code for green
         elif 2 <= days <= 7:
-            issue_color_code = "&#128992;" #html code for orange
+            issue_color_code = "&#128992;"  #html code for orange
         else:
-            issue_color_code = "&#128308;" #html code for red
+            issue_color_code = "&#128308;"  #html code for red
 
         text = f"- {issue_color_code}{issue_type} #{issue_num}: {hyperlink_format}"
         issue_info = self.get_issue_info(issue, issue_type)
