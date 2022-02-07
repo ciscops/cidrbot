@@ -128,11 +128,11 @@ class githandler:
         days = timespan.days
 
         if days < 2:
-            issue_color_code = "&#x1F7E2;"  #html code for green
+            issue_color_code = "&#x1F7E2;"  # html code for green
         elif 2 <= days <= 7:
-            issue_color_code = "&#128992;"  #html code for orange
+            issue_color_code = "&#128992;"  # html code for orange
         else:
-            issue_color_code = "&#128308;"  #html code for red
+            issue_color_code = "&#128308;"  # html code for red
 
         text = f"- {issue_color_code}{issue_type} #{issue_num}: {hyperlink_format}"
         issue_info = self.get_issue_info(issue, issue_type)
@@ -176,6 +176,7 @@ class githandler:
         message = f"Retrieving a list of {assign_type} issues, one moment..."
         msg_edit_num = 1
         issue_dict = {}
+        repo_list = []
 
         for repository in repo_names:
             repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
@@ -187,8 +188,9 @@ class githandler:
                 msg_edit_num += 1
 
             repo_url = "https://github.com/" + repository
-            repo_text = "\n Repo: " + f'<a href="{repo_url}">{repository}</a>\n'
-            all_issues_text = ""
+            repo_text = "\n Repo: " + \
+                f'<a href="{repo_url}">{repository}</a>\n'
+            all_issues_list = []
             issue_num = 0
 
             all_issues = self.session.get(
@@ -207,7 +209,7 @@ class githandler:
                 if request == "List":
                     text = self.process_issue(pr, request, 'Pr', number, assign_type)
                     if text != 'unassigned':
-                        all_issues_text += text
+                        all_issues_list.append(text)
                         issue_num += 1
                 else:
                     repo_full_name = repository + ", " + str(issue_num)
@@ -223,7 +225,7 @@ class githandler:
                     if 'pull_request' not in issue:
                         text = self.process_issue(issue, request, 'Issue', number, assign_type)
                         if text != 'unassigned':
-                            all_issues_text += text
+                            all_issues_list.append(text)
                             issue_num += 1
                 else:
                     if 'pull_request' not in issue:
@@ -234,13 +236,22 @@ class githandler:
                         issue_num += 1
 
             if issue_num > 0:
-                full_text += repo_text + all_issues_text
+                all_issues_list.sort(reverse=True)
+                final_issue_text = ""
+                for issue in all_issues_list:
+                    final_issue_text += issue
+                repo_list.append(repo_text + final_issue_text)
+                full_text += repo_text + final_issue_text
             else:
                 full_text += "\n"
 
         if request == "List":
-            full_text += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
-            return full_text
+            repo_list.sort(key=len)
+            final_repo_order = ""
+            for repo in repo_list:
+                final_repo_order += repo
+            final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
+            return final_repo_order
         return issue_dict
 
     def user_name(self, search_name):
@@ -280,7 +291,8 @@ class githandler:
         return False
 
     def send_auth_link(self, person_id, room_id, pt_id):
-        link = "https://github.com/apps/" + self.git_bot_name + "/installations/new?state="
+        link = "https://github.com/apps/" + \
+            self.git_bot_name + "/installations/new?state="
         state_value = {"personId": person_id, "roomId": room_id, "ptId": pt_id}
 
         alphabet = string.ascii_letters + string.digits
