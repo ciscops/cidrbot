@@ -241,7 +241,6 @@ class githandler:
                 for issue in all_issues_list:
                     final_issue_text += issue
                 repo_list.append(repo_text + final_issue_text)
-                
 
         if request == "List":
             repo_list.sort(key=len)
