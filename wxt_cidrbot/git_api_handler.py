@@ -237,16 +237,12 @@ class githandler:
 
             if issue_num > 0:
                 all_issues_list.sort(reverse=True)
-                final_issue_text = ""
-                for issue in all_issues_list:
-                    final_issue_text += issue
+                final_issue_text = ' '.join(all_issues_list)
                 repo_list.append(repo_text + final_issue_text)
 
         if request == "List":
             repo_list.sort(key=len)
-            final_repo_order = ""
-            for repo in repo_list:
-                final_repo_order += repo
+            final_repo_order = ' '.join(repo_list)
             final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
             return start_text + final_repo_order
         return issue_dict
