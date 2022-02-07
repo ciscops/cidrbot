@@ -171,7 +171,7 @@ class githandler:
     def scan_repos(self, request, assign_type, repo_names, edit_status):
         self.session = requests.Session()
 
-        full_text = f"**{assign_type} Issues:**\n"
+        start_text = f"**{assign_type} Issues:**\n"
 
         message = f"Retrieving a list of {assign_type} issues, one moment..."
         msg_edit_num = 1
@@ -241,9 +241,7 @@ class githandler:
                 for issue in all_issues_list:
                     final_issue_text += issue
                 repo_list.append(repo_text + final_issue_text)
-                full_text += repo_text + final_issue_text
-            else:
-                full_text += "\n"
+                
 
         if request == "List":
             repo_list.sort(key=len)
@@ -251,7 +249,7 @@ class githandler:
             for repo in repo_list:
                 final_repo_order += repo
             final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
-            return final_repo_order
+            return start_text + final_repo_order
         return issue_dict
 
     def user_name(self, search_name):
