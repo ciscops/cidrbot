@@ -40,6 +40,7 @@ class githandler:
         self.Api = WebexTeamsAPI()
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
+        self.time_format = "%Y-%m-%dT%H:%M:%SZ"
         self.user_search_name = ""
         self.room_id = ""
         self.msg_edit_id = ""
@@ -123,7 +124,7 @@ class githandler:
 
         self.logging.debug(issue)
         updated_time = issue['updated_at']
-        date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
+        date = datetime.strptime(updated_time, self.time_format)
         timespan = datetime.today() - date
         days = timespan.days
 
@@ -134,7 +135,7 @@ class githandler:
         else:
             issue_color_code = "&#128308;"  # html code for red
 
-        text = f"- {issue_color_code}{issue_type} #{issue_num}: {hyperlink_format}"
+        text = f"{issue_color_code} &nbsp; {issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
@@ -244,6 +245,7 @@ class githandler:
             repo_list.sort(key=len)
             final_repo_order = ' '.join(repo_list)
             final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
+            self.logging.debug("Total msg len %s", len(start_text + final_repo_order))
             return start_text + final_repo_order
         return issue_dict
 
@@ -348,8 +350,8 @@ class githandler:
 
                 updated_time = issue_json['updated_at']
                 created_time = issue_json['created_at']
-                date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
-                date_created = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
+                date = datetime.strptime(updated_time, self.time_format)
+                date_created = datetime.strptime(created_time, self.time_format)
 
                 timespan = datetime.today() - date
                 timespan_created = datetime.today() - date_created
