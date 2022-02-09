@@ -67,7 +67,7 @@ class room_setup:
 
                 for i in members:
                     i = i.to_dict()
-                    if i['personEmail'] != self.bot_name + "@webex.bot":
+                    if 'personEmail' in i and i['personEmail'] != self.bot_name + "@webex.bot":
                         member_count += 1
                         name = str(i['personDisplayName']).split(" ", 1)[0]
                         user_email = str(i['personEmail']).split("@", 1)[0]

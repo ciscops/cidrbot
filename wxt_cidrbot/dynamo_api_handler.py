@@ -96,22 +96,27 @@ class dynamoapi:
             dup_status = member['duplicate']
             person_id = member['person_id']
 
-            self.table.update_item(
-                Key={'room_id': room_id},
-                UpdateExpression="set #user.#username= :name",
-                ExpressionAttributeNames={
-                    '#user': 'users',
-                    '#username': email
-                },
-                ExpressionAttributeValues={
-                    ':name': {
-                        'reminders_enabled': 'off',
-                        'dup_status': dup_status,
-                        'first_name': first_name,
-                        'person_id': person_id
+            self.logging.debug("Adding user %s, %s", email, first_name)
+            try:
+                self.table.update_item(
+                    Key={'room_id': room_id},
+                    UpdateExpression="set #user.#username= :name",
+                    ExpressionAttributeNames={
+                        '#user': 'users',
+                        '#username': email
+                    },
+                    ExpressionAttributeValues={
+                        ':name': {
+                            'reminders_enabled': 'off',
+                            'dup_status': dup_status,
+                            'first_name': first_name,
+                            'person_id': person_id
+                        }
                     }
-                }
-            )
+                )
+            except Exception as e:
+                self.logging.debug("Error: %s", e.message)
+                continue
 
             self.logging.debug("added user")
             self.logging.debug(email)

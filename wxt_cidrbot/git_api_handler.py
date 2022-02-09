@@ -40,6 +40,7 @@ class githandler:
         self.Api = WebexTeamsAPI()
         self.dynamo = dynamo_api_handler.dynamoapi()
         self.webex = webex_edit_message.webex_message()
+        self.time_format = "%Y-%m-%dT%H:%M:%SZ"
         self.user_search_name = ""
         self.room_id = ""
         self.msg_edit_id = ""
@@ -121,7 +122,20 @@ class githandler:
         url = issue['html_url']
         hyperlink_format = f'<a href="{url}">{title}</a>'
 
-        text = f"- {issue_type} #{issue_num}: {hyperlink_format}"
+        self.logging.debug(issue)
+        updated_time = issue['updated_at']
+        date = datetime.strptime(updated_time, self.time_format)
+        timespan = datetime.today() - date
+        days = timespan.days
+
+        if days < 2:
+            issue_color_code = "&#x1F7E2;"  # html code for green
+        elif 2 <= days <= 7:
+            issue_color_code = "&#128992;"  # html code for orange
+        else:
+            issue_color_code = "&#128308;"  # html code for red
+
+        text = f"{issue_color_code} &nbsp; {issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
@@ -158,11 +172,12 @@ class githandler:
     def scan_repos(self, request, assign_type, repo_names, edit_status):
         self.session = requests.Session()
 
-        full_text = f"**{assign_type} Issues:**\n"
+        start_text = f"**{assign_type} Issues:**\n"
 
         message = f"Retrieving a list of {assign_type} issues, one moment..."
         msg_edit_num = 1
         issue_dict = {}
+        repo_list = []
 
         for repository in repo_names:
             repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
@@ -174,8 +189,9 @@ class githandler:
                 msg_edit_num += 1
 
             repo_url = "https://github.com/" + repository
-            repo_text = "\n Repo: " + f'<a href="{repo_url}">{repository}</a>\n'
-            all_issues_text = ""
+            repo_text = "\n Repo: " + \
+                f'<a href="{repo_url}">{repository}</a>\n'
+            all_issues_list = []
             issue_num = 0
 
             all_issues = self.session.get(
@@ -188,12 +204,13 @@ class githandler:
             if all_prs.status_code != 200 or all_issues.status_code != 200:
                 break
 
-            for pr in all_prs.json():
+            pr_json = all_prs.json()
+            for pr in pr_json:
                 number = pr['number']
                 if request == "List":
                     text = self.process_issue(pr, request, 'Pr', number, assign_type)
                     if text != 'unassigned':
-                        all_issues_text += text
+                        all_issues_list.append(text)
                         issue_num += 1
                 else:
                     repo_full_name = repository + ", " + str(issue_num)
@@ -202,13 +219,14 @@ class githandler:
                     )
                     issue_num += 1
 
-            for issue in all_issues.json():
+            issue_json = all_issues.json()
+            for issue in issue_json:
                 number = issue['number']
                 if request == "List":
                     if 'pull_request' not in issue:
                         text = self.process_issue(issue, request, 'Issue', number, assign_type)
                         if text != 'unassigned':
-                            all_issues_text += text
+                            all_issues_list.append(text)
                             issue_num += 1
                 else:
                     if 'pull_request' not in issue:
@@ -219,13 +237,16 @@ class githandler:
                         issue_num += 1
 
             if issue_num > 0:
-                full_text += repo_text + all_issues_text
-            else:
-                full_text += "\n"
+                all_issues_list.sort(reverse=True)
+                final_issue_text = ' '.join(all_issues_list)
+                repo_list.append(repo_text + final_issue_text)
 
         if request == "List":
-            full_text += f"\n \n Type **@Cidrbot help** for assigning options"
-            return full_text
+            repo_list.sort(key=len)
+            final_repo_order = ' '.join(repo_list)
+            final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
+            self.logging.debug("Total msg len %s", len(start_text + final_repo_order))
+            return start_text + final_repo_order
         return issue_dict
 
     def user_name(self, search_name):
@@ -265,7 +286,8 @@ class githandler:
         return False
 
     def send_auth_link(self, person_id, room_id, pt_id):
-        link = "https://github.com/apps/" + self.git_bot_name + "/installations/new?state="
+        link = "https://github.com/apps/" + \
+            self.git_bot_name + "/installations/new?state="
         state_value = {"personId": person_id, "roomId": room_id, "ptId": pt_id}
 
         alphabet = string.ascii_letters + string.digits
@@ -328,15 +350,13 @@ class githandler:
 
                 updated_time = issue_json['updated_at']
                 created_time = issue_json['created_at']
-                date = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
-                date_created = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
+                date = datetime.strptime(updated_time, self.time_format)
+                date_created = datetime.strptime(created_time, self.time_format)
 
                 timespan = datetime.today() - date
                 timespan_created = datetime.today() - date_created
-                timespan = str(timespan).split(", ")[0]
-                timespan_created = str(timespan_created).split(", ")[0]
-                last_seen = f"Last seen: {timespan}"
-                created = f"Created: {timespan_created} ago"
+                last_seen = f"Last seen: {timespan.days} days"
+                created = f"Created: {timespan_created.days} days ago"
 
                 hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
                 name_hyperlink = f'<a href="{issue.user.html_url}">{issue.user.login}</a>'
