@@ -132,6 +132,55 @@ class dynamoapi:
         except Exception:
             self.logging.debug("Room deleted")
 
+    def add_triage_user(self, room_id, user_name):
+        self.get_dynamo()
+
+        try:
+            response = self.table.query(
+                KeyConditionExpression=Key('room_id').eq(room_id), FilterExpression=Attr('triage').exists()
+            )
+            user_exists = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            if user_name in user_exists['Items'][0]['triage']:
+                return f"{user_name} is already in triage list"
+            self.logging.debug(user_exists)
+
+            if response['Count'] == 0:
+                self.table.update_item(
+                    Key={'room_id': room_id},
+                    UpdateExpression='SET #triage= :value',
+                    ExpressionAttributeNames={'#triage': 'triage'},
+                    ExpressionAttributeValues={':value': {}}
+                )
+            self.table.update_item(
+                Key={'room_id': room_id},
+                #UpdateExpression="SET #triage = list_append(#triage, :name)",
+                UpdateExpression="SET #triage.#name= :value",
+                ExpressionAttributeNames={
+                    '#triage': 'triage',
+                    '#name': user_name
+                },
+                ExpressionAttributeValues={':value': ''}
+            )
+            return f"Successfully added triage user {user_name}"
+        except Exception:
+            return f"Cannot add user {user_name}"
+
+    def remove_triage_user(self, user, room_id):
+        self.get_dynamo()
+
+        try:
+            self.table.update_item(
+                Key={'room_id': room_id},
+                UpdateExpression="REMOVE #triage.#username",
+                ExpressionAttributeNames={
+                    '#triage': 'triage',
+                    '#username': user
+                }
+            )
+            return f"Successfully removed {user} from triage list"
+        except Exception:
+            return f"Cannot remove {user} from triage list"
+
     def clean_username(self, name):
         name = str(name)
         if "@" in name:
@@ -174,6 +223,18 @@ class dynamoapi:
             repo_list.append(i)
 
         return repo_list
+
+    def get_triage(self, room_id):
+        self.get_dynamo()
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        triage_dict = response['Items'][0]['triage']
+        triage_list = []
+
+        for i in triage_dict:
+            triage_list.append(i)
+
+        return triage_list
 
     def get_repo_keys(self, room_id, repo_name):
         self.get_dynamo()
