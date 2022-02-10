@@ -153,7 +153,6 @@ class dynamoapi:
                 )
             self.table.update_item(
                 Key={'room_id': room_id},
-                #UpdateExpression="SET #triage = list_append(#triage, :name)",
                 UpdateExpression="SET #triage.#name= :value",
                 ExpressionAttributeNames={
                     '#triage': 'triage',
@@ -171,9 +170,9 @@ class dynamoapi:
         try:
             self.table.update_item(
                 Key={'room_id': room_id},
-                UpdateExpression="REMOVE #triage.#username",
+                UpdateExpression="REMOVE #triagelist.#username",
                 ExpressionAttributeNames={
-                    '#triage': 'triage',
+                    '#triagelist': 'triage',
                     '#username': user
                 }
             )
