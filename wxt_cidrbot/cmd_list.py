@@ -80,7 +80,7 @@ class cmdlist:
 
         words_list = [
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
-            'unassign', 'info', 'test'
+            'unassign', 'info', 'test', 'triage'
         ]
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
 
@@ -174,6 +174,17 @@ class cmdlist:
             return self.send_update_msg(room_id, "user", self.user_email, None, pt_id)
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list(room_id)
+        if self.similar(sim_text, "list triage users") > 0.8:
+            return self.triage_list(room_id)
+        if 'triage' in words:
+            for user in self.webex_mod_status:
+                if user.isModerator:
+                    triage_text = text_split[1] + " " + text_split[2]
+                    if self.similar(triage_text, "triage add") > 0.9:
+                        return self.send_update_msg(room_id, "triage add", text_split[3], text_split, pt_id)
+                    if self.similar(triage_text, "triage remove") > 0.9:
+                        return self.send_update_msg(room_id, "triage remove", text_split[3], text_split, pt_id)
+            return "Only moderators can access triage commands"
         if 'info' in words:
             return self.send_update_msg(room_id, 'info', None, text_split, pt_id)
         if 'assign' in words:
@@ -218,6 +229,10 @@ class cmdlist:
             text = f"Retrieving issues, one moment..."
         elif cmd_type == 'info':
             text = f"Retrieving issue information..."
+        elif cmd_type == 'triage add':
+            text = f"Searching github for user {name} ..."
+        elif cmd_type == 'triage remove':
+            text = f"Removing triage user {name} ..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
@@ -275,6 +290,14 @@ class cmdlist:
             return message_info_list
         if cmd_type == 'info':
             message = self.git_handle.issue_details(text_split)
+            message_info_list.append(message)
+            return message_info_list
+        if cmd_type == 'triage add':
+            message = self.git_handle.triage_user(text_split, room_id)
+            message_info_list.append(message)
+            return message_info_list
+        if cmd_type == 'triage remove':
+            message = self.dynamo.remove_triage_user(name, room_id)
             message_info_list.append(message)
             return message_info_list
         return "Interal error"
@@ -494,6 +517,13 @@ class cmdlist:
         if help_type == "syntax":
             return syntax_help + end_text
         return "No help type found"
+
+    def triage_list(self, room_id):
+        triage = self.dynamo.get_triage(room_id)
+        message = "Current list of triage users Cidrbot assigns issues to:\n"
+        for user in triage:
+            message += "- " + user + " \n"
+        return message
 
     # Return a list of all the current repos
     def repo_list(self, room_id):

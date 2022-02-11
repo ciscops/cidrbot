@@ -302,6 +302,11 @@ class githandler:
         self.dynamo.add_auth_request(state, state_value)
         self.Api.messages.create(toPersonId=person_id, markdown=message)
 
+    def triage_user(self, text_split, room_id):
+        if self.check_github_user(text_split[3]):
+            return self.dynamo.add_triage_user(room_id, text_split[3])
+        return f"Cannot find user {text_split[3]}, ensure you have entered a valid github username"
+
     def issue_details(self, text):
 
         try:
@@ -395,7 +400,10 @@ class githandler:
 
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
     def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
-        token = self.dynamo.get_repo_keys(self.room_id, repo)
+        try:
+            token = self.dynamo.get_repo_keys(self.room_id, repo)
+        except Exception:
+            return f"Cannot find repo {repo}, verify spelling"
 
         self.git_api = Github(token)
         self.session = requests.Session()
