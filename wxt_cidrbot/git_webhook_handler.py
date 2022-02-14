@@ -115,7 +115,7 @@ class gitwebhook:
         room_id = event_info[0]['room_id']
         issue_title = json_string[query_key]['title']
         issue_url = json_string[query_key]['url']
-        user = json_string[query_key]['user']['login']
+        issue_user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
         repo_url = json_string['repository']['html_url']
         self.logging.debug("Creating room message")
@@ -150,9 +150,9 @@ class gitwebhook:
         author_list = []
         user_issue_count = []
 
-        for user in triage:
-            author_list.append(user)
-            self.logging.debug("Adding %s", user)
+        for triage_list_user in triage:
+            author_list.append(triage_list_user)
+            self.logging.debug("Adding %s", triage_list_user)
 
         query_repo = ""
         for repo in repos:
@@ -165,44 +165,28 @@ class gitwebhook:
             full_issue_url = f"https://api.github.com/search/issues?q=" + issue_query
             issue_search = session.get(full_issue_url, headers={})
             issue_count = issue_search.json()['total_count']
-            self.logging.debug(issue_search.json())
             self.logging.debug(issue_search.json()['total_count'])
             issue_count_dict = {'issues': issue_count, 'username': author}
             user_issue_count.append(issue_count_dict)
 
         issue_count_sorted = sorted(user_issue_count, key = lambda i: i['issues'])
         self.logging.debug(issue_count_sorted)
-        self.logging.debug("Picking user with least issues: %s", issue_count_sorted[0]['username'])
-        triage_user = issue_count_sorted[0]['username']
-        git_user_info = requests.get('https://api.github.com/users/' + triage_user)
-        full_name = git_user_info.json()['name']
-        reply_message = f"{full_name} has been assigned to issue {hyperlink_format}"
+
+        user_to_assign = None
+
+        for triage_user in issue_count_sorted:
+            if issue_user != triage_user['username']:
+                user_to_assign = triage_user['username']
+                self.logging.debug("Picking user with least issues: %s", user_to_assign)
+                break
+
+        if user_to_assign is not None:
+            git_user_info = requests.get('https://api.github.com/users/' + user_to_assign)
+            full_name = git_user_info.json()['name']
+            reply_message = f"{full_name} has been assigned to {issue_type} {hyperlink_format}"
+        else:
+            reply_message = "No valid user to assign to issue. Please ensure there are valid users in the triage list. \n - Note: This could be due to the author of the issue being the only present triage user"
         self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
-
-
-        #query_author_issue = f"is:issue state:open author:{author}"
-        #query_author_pr = f"is:pr state:open author:{author}"
-
-        #full_query_issue = query_author_issue + query_repo
-        #full_query_pr = query_author_pr + query_repo
-        #url_issue = f"https://api.github.com/search/issues?q=" + full_query_issue
-        #url_pr = f"https://api.github.com/search/issues?q=" + full_query_pr
-        #issue_search = session.get(url_issue, headers={})
-        #pr_search = session.get(url_pr, headers={})
-        #self.logging.debug(issue_search.json())
-        #self.logging.debug(pr_search.json())
-
-
-
-
-
-        #self.Api.messages.create(
-
-    #        room_id, markdown=message, parentId=msg_edit_id)
-
-    #Do private repos need keys?
-    #Does a new issue do triage based on a persons issues, prs, or both?
-    #Do any and all repos authed to a room get triage instantly?
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
