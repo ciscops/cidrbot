@@ -97,7 +97,7 @@ class gitwebhook:
 
                 self.Api.messages.create(self.room_id, markdown=message_uninstall)
 
-        elif x_event_type == 'issues' or x_event_type == 'prs':
+        elif x_event_type == 'issues' or x_event_type == 'pull_request':
             if event_action == 'opened':
                 self.triage_issue(installation_id, json_string, x_event_type)
 
