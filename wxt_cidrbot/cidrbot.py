@@ -10,7 +10,7 @@ from wxt_cidrbot import git_api_handler
 from wxt_cidrbot import dynamo_api_handler
 from wxt_cidrbot import webex_edit_message
 
-#This pr it not meant to be approved, it is for testing purposes
+#This pr it not meant to be approved, it is for testing purposes only
 class cidrbot:
     def __init__(self):
         # Initialize logging
