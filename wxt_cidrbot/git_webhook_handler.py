@@ -104,7 +104,7 @@ class gitwebhook:
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
-        Issue_type = "Pull request"
+        issue_type = "Pull request"
         query_key = "pull_request"
 
         self.logging.debug("Checking issue type")
