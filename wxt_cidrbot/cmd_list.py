@@ -184,7 +184,8 @@ class cmdlist:
                         return self.send_update_msg(room_id, "triage add", text_split[3], text_split, pt_id)
                     if self.similar(triage_text, "triage remove") > 0.9:
                         return self.send_update_msg(room_id, "triage remove", text_split[3], text_split, pt_id)
-            return "Only moderators can access triage commands"
+                else:        
+                    return "Only moderators can access triage commands"
         if 'info' in words:
             return self.send_update_msg(room_id, 'info', None, text_split, pt_id)
         if 'assign' in words:
@@ -519,10 +520,14 @@ class cmdlist:
         return "No help type found"
 
     def triage_list(self, room_id):
-        triage = self.dynamo.get_triage(room_id)
-        message = "Current list of triage users Cidrbot assigns issues to:\n"
-        for user in triage:
-            message += "- " + user + " \n"
+        try:
+            triage = self.dynamo.get_triage(room_id)
+            message = "Current list of triage users Cidrbot assigns issues to:\n"
+            for user in triage:
+                message += "- " + user + " \n"
+        except Exception:
+            message = "No users in triage list. To add users, type: triage add username"
+
         return message
 
     # Return a list of all the current repos

@@ -5,6 +5,7 @@ import json
 import boto3
 from boto3.dynamodb.conditions import Key
 from webexteamssdk import WebexTeamsAPI
+import requests
 from wxt_cidrbot import dynamo_api_handler
 
 
@@ -48,22 +49,19 @@ class gitwebhook:
         json_string = json.loads((event["body"]))
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
-        #github_login_id = json_string['installation']['account']['id']
-        #github_login_id = json_string['sender']['id']
+        x_event_type = event['headers']['x-github-event']
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
 
             room_id = event_info[0]['room_id']
             token = event_info[0]['access_token']
-            #name = event_info[0]['user_name']
             person_id = event_info[0]['person_id']
             message_add_repo = ""
             message_remove_repo = ""
 
             self.dynamodb = boto3.resource('dynamodb')
             self.table = self.dynamodb.Table(self.db_room_name)
-            #user_reminders = self.dynamo.get_user_info(name, room_id)
 
             for repo_added in json_string['repositories_added']:
                 if len(repo_added) > 0:
@@ -77,7 +75,6 @@ class gitwebhook:
                     message_remove_repo += f" - " + repo + "\n"
                     self.edit_repo(room_id, repo, token, "remove")
 
-            #person_id = user_reminders['person_id']
             room = self.Api.rooms.get(room_id)
             room_name = room.title
 
@@ -99,6 +96,107 @@ class gitwebhook:
                     message_uninstall += f" - " + repo + "\n"
 
                 self.Api.messages.create(self.room_id, markdown=message_uninstall)
+
+        elif x_event_type == 'issues' or x_event_type == 'prs':
+            if event_action == 'opened':
+                self.triage_issue(installation_id, json_string, x_event_type)
+
+    def triage_issue(self, installation_id, json_string, x_event_type):
+        event_info = self.check_installation(installation_id)
+        room_id = event_info[0]['room_id']
+        issue_title = json_string['issue']['title']
+        issue_url = json_string['issue']['url']
+        user = json_string['issue']['user']['login']
+        repo_name = json_string['repository']['full_name']
+        repo_url = json_string['issue']['repository_url']
+        Issue_type = "Pull request"
+
+        if x_event_type == 'issues':
+            issue_type = "Issue"
+
+        hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+        hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+        message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
+
+        try:
+            triage = self.dynamo.get_triage(room_id)
+            repos = self.dynamo.get_repositories(room_id)
+        except Exception:
+            self.logging.debug("Error retrieving triage users and/or repos")
+            sys.exit(1)
+
+        if len(triage) < 1:
+            self.logging.debug("No triage users, quitting triage")
+            sys.exit(1)
+
+        URL = f'https://webexapis.com/v1/messages'
+        headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
+        post_message = {'roomId': room_id, 'markdown': message}
+        response = requests.post(URL, json=post_message, headers=headers)
+        if response.status_code == 200:
+            self.logging.debug("Message created successfully")
+            msg_edit_id = json.loads(str(response.text))["id"]
+        else:
+            self.logging.debug("Status code %s | text %s", str(response.status_code), str(response.text))
+
+        session = requests.Session()
+        self.logging.debug("Starting triage")
+        author_list = []
+        user_issue_count = []
+
+        for user in triage:
+            author_list.append(user)
+            self.logging.debug("Adding %s", user)
+
+        query_repo = ""
+        for repo in repos:
+            self.logging.debug("repo: %s", repo)
+            query_repo += f" repo:{repo} "
+
+        for author in author_list:
+            self.logging.debug("Checking issue count for Author: %s", author)
+            issue_query = f"state:open author:{author}" + query_repo
+            full_issue_url = f"https://api.github.com/search/issues?q=" + issue_query
+            issue_search = session.get(full_issue_url, headers={})
+            issue_count = issue_search.json()['total_count']
+            self.logging.debug(issue_search.json())
+            self.logging.debug(issue_search.json()['total_count'])
+            issue_count_dict = {'issues': issue_count, 'username': author}
+            user_issue_count.append(issue_count_dict)
+
+        issue_count_sorted = sorted(user_issue_count, key = lambda i: i['issues'])
+        self.logging.debug(issue_count_sorted)
+        self.logging.debug("Picking user with least issues: %s", issue_count_sorted[0]['username'])
+        triage_user = issue_count_sorted[0]['username']
+        git_user_info = requests.get('https://api.github.com/users/' + triage_user)
+        full_name = git_user_info.json()['name']
+        reply_message = f"{full_name} has been assigned to issue {hyperlink_format}"
+        self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
+
+
+        #query_author_issue = f"is:issue state:open author:{author}"
+        #query_author_pr = f"is:pr state:open author:{author}"
+
+        #full_query_issue = query_author_issue + query_repo
+        #full_query_pr = query_author_pr + query_repo
+        #url_issue = f"https://api.github.com/search/issues?q=" + full_query_issue
+        #url_pr = f"https://api.github.com/search/issues?q=" + full_query_pr
+        #issue_search = session.get(url_issue, headers={})
+        #pr_search = session.get(url_pr, headers={})
+        #self.logging.debug(issue_search.json())
+        #self.logging.debug(pr_search.json())
+
+
+
+
+
+        #self.Api.messages.create(
+
+    #        room_id, markdown=message, parentId=msg_edit_id)
+
+    #Do private repos need keys?
+    #Does a new issue do triage based on a persons issues, prs, or both?
+    #Do any and all repos authed to a room get triage instantly?
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
