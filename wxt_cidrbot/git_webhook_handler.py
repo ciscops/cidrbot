@@ -103,16 +103,20 @@ class gitwebhook:
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
-        room_id = event_info[0]['room_id']
-        issue_title = json_string['issue']['title']
-        issue_url = json_string['issue']['url']
-        user = json_string['issue']['user']['login']
-        repo_name = json_string['repository']['full_name']
-        repo_url = json_string['issue']['repository_url']
         Issue_type = "Pull request"
+        query_key = "pull_request"
 
         if x_event_type == 'issues':
             issue_type = "Issue"
+            query_key = "issue"
+
+        room_id = event_info[0]['room_id']
+        issue_title = json_string[query_key]['title']
+        issue_url = json_string[query_key]['url']
+        user = json_string[query_key]['user']['login']
+        repo_name = json_string['repository']['full_name']
+        repo_url = json_string[query_key]['repository_url']
+
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
