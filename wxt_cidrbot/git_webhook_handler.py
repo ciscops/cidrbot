@@ -99,6 +99,7 @@ class gitwebhook:
 
         elif x_event_type == 'issues' or x_event_type == 'pull_request':
             if event_action == 'opened':
+                self.logging.debug("Triaging issue")
                 self.triage_issue(installation_id, json_string, x_event_type)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
@@ -106,6 +107,7 @@ class gitwebhook:
         Issue_type = "Pull request"
         query_key = "pull_request"
 
+        self.logging.debug("Checking issue type")
         if x_event_type == 'issues':
             issue_type = "Issue"
             query_key = "issue"
@@ -116,7 +118,7 @@ class gitwebhook:
         user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
         repo_url = json_string[query_key]['repository_url']
-
+        self.logging.debug("Creating room message")
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
