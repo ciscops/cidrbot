@@ -117,7 +117,7 @@ class gitwebhook:
         issue_url = json_string[query_key]['url']
         user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
-        repo_url = json_string[query_key]['repository_url']
+        repo_url = json_string['html_url']
         self.logging.debug("Creating room message")
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
