@@ -178,7 +178,7 @@ Leave all the current settings as is for now
     - Under "webhook" check the button for "active" and in the "webhook url" box, set the url to
     "https://" + (lambdaDomainName) + / + (apiGitMappingKeyName) + / + (lambdaFunctionName)
     - Navigate to permissions and events tab
-    Under "Subscribe to events" at the bottom of the page, select "Repository" and save all changes
+    Under "Subscribe to events" at the bottom of the page, select "Repository", "Issues" and "Pull Request" and save all changes
 7) Permissions for Github app in the ui
     - Discussions : Read & write
     - Issues : Read & write
