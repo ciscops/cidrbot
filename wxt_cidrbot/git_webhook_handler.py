@@ -167,12 +167,19 @@ class gitwebhook:
 
         for author in author_list:
             self.logging.debug("Checking issue count for Author: %s", author)
-            issue_query = f"state:open author:{author}" + query_repo
+            issue_query = f"state:open type:issue assignee:{author}" + query_repo
             full_issue_url = f"https://api.github.com/search/issues?q=" + issue_query
+
+            pr_query = f"state:open type:pr review-requested:{author}" + query_repo
+            full_pr_url = f"https://api.github.com/search/issues?q=" + pr_query
+
             issue_search = session.get(full_issue_url, headers={})
             issue_count = issue_search.json()['total_count']
-            self.logging.debug(issue_search.json()['total_count'])
-            issue_count_dict = {'issues': issue_count, 'username': author}
+
+            pr_search = session.get(full_pr_url, headers={})
+            pr_count = pr_search.json()['total_count']
+
+            issue_count_dict = {'issues': issue_count + pr_count, 'username': author}
             user_issue_count.append(issue_count_dict)
 
         issue_count_sorted = sorted(user_issue_count, key=lambda i: i['issues'])
