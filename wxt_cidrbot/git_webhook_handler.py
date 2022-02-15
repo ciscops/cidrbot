@@ -186,21 +186,25 @@ class gitwebhook:
         self.logging.debug(issue_count_sorted)
 
         user_to_assign = None
+        self.git_handle.room_and_edit_id(room_id, None)
 
         for triage_user in issue_count_sorted:
             if issue_user != triage_user['username']:
                 user_to_assign = triage_user['username']
                 self.logging.debug("Picking user with least issues: %s", user_to_assign)
+
+                git_user_info = requests.get('https://api.github.com/users/' + user_to_assign)
+                full_name = git_user_info.json()['name']
+
+                reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
+                self.logging.debug("assigning result %s", reply_message)
+                if f'successfully assigned to {full_name}' not in reply_message and 'Error: **invalid user**' in reply_message:
+                    self.logging.debug("Invalid user, cannot assign %s: removing from triage list", user_to_assign)
+                    self.dynamo.remove_triage_user(user_to_assign, room_id)
+                    remove_triage_message = f"{user_to_assign} cannot be assigned because they do not have access to the repo/org, removing user from triage list"
+                    self.Api.messages.create(room_id, markdown=remove_triage_message, parentId=msg_edit_id)
+                    continue
                 break
-
-        if user_to_assign is not None:
-            git_user_info = requests.get('https://api.github.com/users/' + user_to_assign)
-            full_name = git_user_info.json()['name']
-            self.git_handle.room_and_edit_id(room_id, None)
-            reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
-        else:
-            reply_message = "No valid user to assign to issue. Please ensure there are valid users in the triage list. \n - Note: This could be due to the author of the issue being the only present triage user"
-
         self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
 
     def edit_repo(self, room_id, repo, token, request):
