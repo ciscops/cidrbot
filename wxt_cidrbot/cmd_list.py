@@ -82,7 +82,7 @@ class cmdlist:
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
             'unassign', 'info', 'test', 'triage'
         ]
-        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
+        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage']
 
         repo_names = self.dynamo.get_repositories(room_id)
         repo_names = sorted(repo_names, key=str.lower)
@@ -212,7 +212,7 @@ class cmdlist:
 
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
-            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax) \n"
+            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage) \n"
         )
         return help_text
 
@@ -498,7 +498,15 @@ class cmdlist:
         )
         repos_help = (
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
-            "- **@Cidrbot manage repos** - only for moderators in chat room\n"
+            "- **@Cidrbot manage repos** - only for moderators in chat room\n" + "\n"
+        )
+
+        triage_help = (
+            f"-Display current triage list:\n" + "- **@Cidrbot list triage users**\n" +
+            "- Add or remove triage users (Username has to be the **exact** github username)\n" +
+            "- Only github users who are able to be assigned to an issue/pr can be assigned by cidrbot\n" +
+            "- **@Cidrbot triage add username** - only for moderators in chat room\n" +
+            "- **@Cidrbot triage remove username** - only for moderators in chat room\n"
         )
 
         syntax_end_text = (
@@ -506,7 +514,7 @@ class cmdlist:
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help +end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":
@@ -517,6 +525,8 @@ class cmdlist:
             return reminders_help + end_text
         if help_type == "syntax":
             return syntax_help + end_text
+        if help_type == "triage":
+            return triage_help + end_text
         return "No help type found"
 
     def triage_list(self, room_id):
