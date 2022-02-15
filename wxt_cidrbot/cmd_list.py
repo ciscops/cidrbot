@@ -184,7 +184,7 @@ class cmdlist:
                         return self.send_update_msg(room_id, "triage add", text_split[3], text_split, pt_id)
                     if self.similar(triage_text, "triage remove") > 0.9:
                         return self.send_update_msg(room_id, "triage remove", text_split[3], text_split, pt_id)
-                else:        
+                else:
                     return "Only moderators can access triage commands"
         if 'info' in words:
             return self.send_update_msg(room_id, 'info', None, text_split, pt_id)

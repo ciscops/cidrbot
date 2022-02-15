@@ -162,7 +162,7 @@ class dynamoapi:
                 ExpressionAttributeValues={':value': ''}
             )
             return f"Successfully added triage user {user_name}"
-        except Exception as e:
+        except Exception:
             return f"Cannot add user {user_name}"
 
     def remove_triage_user(self, user, room_id):
