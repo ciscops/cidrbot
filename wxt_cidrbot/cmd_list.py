@@ -514,7 +514,7 @@ class cmdlist:
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help +end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":

@@ -113,11 +113,9 @@ class gitwebhook:
         if x_event_type == 'issues':
             issue_type = "Issue"
             query_key = "issue"
-
-        if 'number' in json_string:
-            issue_num = json_string['number']
-        else:
             issue_num = json_string['issue']['number']
+        else:
+            issue_num = json_string['number']
 
         room_id = event_info[0]['room_id']
         issue_title = json_string[query_key]['title']
