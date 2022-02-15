@@ -198,7 +198,7 @@ class gitwebhook:
 
                 reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
                 self.logging.debug("assigning result %s", reply_message)
-                if f'successfully assigned to {full_name}' not in reply_message and 'Error: **invalid user**' in reply_message:
+                if 'Error: **invalid user**' in reply_message:
                     self.logging.debug("Invalid user, cannot assign %s: removing from triage list", user_to_assign)
                     self.dynamo.remove_triage_user(user_to_assign, room_id)
                     remove_triage_message = f"{user_to_assign} cannot be assigned because they do not have access to the repo/org, removing user from triage list"
