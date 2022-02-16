@@ -170,31 +170,33 @@ class cidrbot:
                 self.message_event(json_string, event_type, webex_msg_sender)
 
     def check_message_overflow(self, message, room_id, message_id, pt_id, request_type):
-        if 'Repo:' in message and len(message) > 4800:
-            split_message = message.split('Repo:')
-            self.logging.debug(split_message)
+        split_keyword = 'Repo:'
+
+        if len(message) < 4800:
+            return False
+
+        if split_keyword in message:
+            split_message = message.split(split_keyword)
             message_first_part = ""
             remainder_message = ""
             for repo in split_message:
                 self.logging.debug("Length of repo %s", len(repo))
                 if len(message_first_part) + len(repo) < 4800:
                     if '**All Issues:**' not in repo:
-                        message_first_part += 'Repo:'
+                        message_first_part += split_keyword
                     message_first_part += repo
-                    self.logging.debug(repo)
                 elif len(remainder_message) + len(repo) < 4800:
                     remainder_message += "Repo:" + repo
                 else:
                     remainder_message = "One repo has too many issues and exceeds the webex message limit."
 
-            if request_type == 'daily_message':
-                self.send_wbx_msg(room_id, message_first_part, pt_id)
-                self.send_wbx_msg(room_id, remainder_message, pt_id)
-            if request_type == 'edit_message':
-                self.webex.edit_message(message_id, message_first_part, room_id)
-                self.send_wbx_msg(room_id, remainder_message, pt_id)
-            return True
-        return False
+        if request_type == 'daily_message':
+            self.send_wbx_msg(room_id, message_first_part, pt_id)
+            self.send_wbx_msg(room_id, remainder_message, pt_id)
+        if request_type == 'edit_message':
+            self.webex.edit_message(message_id, message_first_part, room_id)
+            self.send_wbx_msg(room_id, remainder_message, pt_id)
+        return True
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id, pt_id):
