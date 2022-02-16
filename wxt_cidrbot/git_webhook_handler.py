@@ -118,6 +118,14 @@ class gitwebhook:
             issue_num = json_string['number']
 
         room_id = event_info[0]['room_id']
+
+        try:
+            triage_list = self.dynamo.get_triage(room_id)
+            repos = self.dynamo.get_repositories(room_id)
+        except Exception:
+            self.logging.debug("Error retrieving triage users and/or repos")
+            sys.exit(1)
+
         issue_title = json_string[query_key]['title']
         issue_url = json_string[query_key]['url']
         issue_user = json_string[query_key]['user']['login']
@@ -128,14 +136,7 @@ class gitwebhook:
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
         message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
 
-        try:
-            triage = self.dynamo.get_triage(room_id)
-            repos = self.dynamo.get_repositories(room_id)
-        except Exception:
-            self.logging.debug("Error retrieving triage users and/or repos")
-            sys.exit(1)
-
-        if len(triage) < 1:
+        if len(triage_list) < 1:
             self.logging.debug("No triage users, quitting triage")
             sys.exit(1)
 
@@ -154,7 +155,7 @@ class gitwebhook:
         author_list = []
         user_issue_count = []
 
-        for triage_list_user in triage:
+        for triage_list_user in triage_list:
             author_list.append(triage_list_user)
             self.logging.debug("Adding %s", triage_list_user)
 
@@ -186,9 +187,9 @@ class gitwebhook:
         user_to_assign = None
         self.git_handle.room_and_edit_id(room_id, None)
 
-        for triage_user in issue_count_sorted:
-            if issue_user != triage_user['username']:
-                user_to_assign = triage_user['username']
+        for user in issue_count_sorted:
+            if issue_user != user['username']:
+                user_to_assign = user['username']
                 self.logging.debug("Picking user with least issues: %s", user_to_assign)
 
                 git_user_info = requests.get('https://api.github.com/users/' + user_to_assign)

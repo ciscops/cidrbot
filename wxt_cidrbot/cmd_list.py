@@ -175,7 +175,7 @@ class cmdlist:
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list(room_id)
         if self.similar(sim_text, "list triage users") > 0.8:
-            return self.triage_list(room_id)
+            return self.list_triage_message(room_id)
         if 'triage' in words:
             for user in self.webex_mod_status:
                 if user.isModerator:
@@ -529,7 +529,7 @@ class cmdlist:
             return triage_help + end_text
         return "No help type found"
 
-    def triage_list(self, room_id):
+    def list_triage_message(self, room_id):
         try:
             triage = self.dynamo.get_triage(room_id)
             message = "Current list of triage users Cidrbot assigns issues to:\n"
