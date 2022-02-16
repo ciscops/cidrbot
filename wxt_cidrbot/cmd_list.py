@@ -82,7 +82,7 @@ class cmdlist:
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
             'unassign', 'info', 'test', 'triage'
         ]
-        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax']
+        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage']
 
         repo_names = self.dynamo.get_repositories(room_id)
         repo_names = sorted(repo_names, key=str.lower)
@@ -175,7 +175,7 @@ class cmdlist:
         if self.similar(sim_text, "list repos") > 0.8:
             return self.repo_list(room_id)
         if self.similar(sim_text, "list triage users") > 0.8:
-            return self.triage_list(room_id)
+            return self.list_triage_message(room_id)
         if 'triage' in words:
             for user in self.webex_mod_status:
                 if user.isModerator:
@@ -184,7 +184,8 @@ class cmdlist:
                         return self.send_update_msg(room_id, "triage add", text_split[3], text_split, pt_id)
                     if self.similar(triage_text, "triage remove") > 0.9:
                         return self.send_update_msg(room_id, "triage remove", text_split[3], text_split, pt_id)
-            return "Only moderators can access triage commands"
+                else:
+                    return "Only moderators can access triage commands"
         if 'info' in words:
             return self.send_update_msg(room_id, 'info', None, text_split, pt_id)
         if 'assign' in words:
@@ -211,7 +212,7 @@ class cmdlist:
 
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
-            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax) \n"
+            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage) \n"
         )
         return help_text
 
@@ -497,7 +498,15 @@ class cmdlist:
         )
         repos_help = (
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
-            "- **@Cidrbot manage repos** - only for moderators in chat room\n"
+            "- **@Cidrbot manage repos** - only for moderators in chat room\n" + "\n"
+        )
+
+        triage_help = (
+            f"-Display current triage list:\n" + "- **@Cidrbot list triage users**\n" +
+            "- Add or remove triage users (Username has to be the **exact** github username)\n" +
+            "- Only github users who are able to be assigned to an issue/pr can be assigned by cidrbot\n" +
+            "- **@Cidrbot triage add username** - only for moderators in chat room\n" +
+            "- **@Cidrbot triage remove username** - only for moderators in chat room\n"
         )
 
         syntax_end_text = (
@@ -505,7 +514,7 @@ class cmdlist:
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":
@@ -516,13 +525,19 @@ class cmdlist:
             return reminders_help + end_text
         if help_type == "syntax":
             return syntax_help + end_text
+        if help_type == "triage":
+            return triage_help + end_text
         return "No help type found"
 
-    def triage_list(self, room_id):
-        triage = self.dynamo.get_triage(room_id)
-        message = "Current list of triage users Cidrbot assigns issues to:\n"
-        for user in triage:
-            message += "- " + user + " \n"
+    def list_triage_message(self, room_id):
+        try:
+            triage = self.dynamo.get_triage(room_id)
+            message = "Current list of triage users Cidrbot assigns issues to:\n"
+            for user in triage:
+                message += "- " + user + " \n"
+        except Exception:
+            message = "No users in triage list. To add users, type: triage add username"
+
         return message
 
     # Return a list of all the current repos

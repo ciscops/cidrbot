@@ -140,8 +140,9 @@ class dynamoapi:
                 KeyConditionExpression=Key('room_id').eq(room_id), FilterExpression=Attr('triage').exists()
             )
             user_exists = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
-            if user_name in user_exists['Items'][0]['triage']:
-                return f"{user_name} is already in triage list"
+            if 'triage' in user_exists['Items'][0]:
+                if user_name in user_exists['Items'][0]['triage']:
+                    return f"{user_name} is already in triage list"
             self.logging.debug(user_exists)
 
             if response['Count'] == 0:
