@@ -209,23 +209,19 @@ class gitwebhook:
                 self.logging.debug("assigning result %s", reply_message)
                 if 'Error: **invalid user**' in reply_message:
                     self.logging.debug("Invalid user, cannot assign %s: ", user_to_assign)
-                    #self.dynamo.remove_triage_user(user_to_assign, room_id)
                     fail_triage_message = f"{user_to_assign} cannot be assigned because they do not have access to the repo/org, checking next user in triage list..."
                     self.Api.messages.create(room_id, markdown=fail_triage_message, parentId=msg_edit_id)
                     continue
                 break
 
+        if isinstance(reply_message, list):
+            if reply_message[1] is not None and reply_message[1] == 'notify user':
+                message = reply_message[3]
+                user_id = reply_message[2]
+                self.cidrbot.send_directwbx_msg(user_id, message)
 
-        # if type is list
-
-        if text[1] is not None and text[1] == 'notify user':
-        message = text[0]
-        user_id = text[2]
-    
-        self.send_directwbx_msg(user_id, message)
-
-
-        self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
+        room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
+        self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
     def send_merged_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
