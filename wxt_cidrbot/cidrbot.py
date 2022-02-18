@@ -198,8 +198,6 @@ class cidrbot:
         self.send_wbx_msg(room_id, remainder_message, pt_id)
         return True
 
-
-
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id, pt_id):
         message_overflow = self.check_message_overflow(message, room_id, message_id, pt_id, 'edit_message')
