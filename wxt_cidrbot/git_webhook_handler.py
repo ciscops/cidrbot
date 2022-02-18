@@ -106,8 +106,10 @@ class gitwebhook:
                 self.triage_issue(installation_id, json_string, x_event_type)
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
-        elif x_event_type == 'pull_request_review':
-            self.send_review_message(installation_id, json_string)
+            elif event_action == 'review_requested':
+                self.send_review_message(installation_id, json_string)
+        #elif x_event_type == 'pull_request_review':
+
 
     # Assign a new github issue/pr on webhook
     def triage_issue(self, installation_id, json_string, x_event_type):
@@ -242,10 +244,11 @@ class gitwebhook:
     def send_review_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
-        issue_user = json_string['pull_request']['user']['login']
+        #issue_user = json_string['pull_request']['user']['login']
+        reviewer_assigned = json_string['requested_reviewer']['login']
 
         try:
-            user = self.dynamo.get_user_info(issue_user, room_id)
+            user = self.dynamo.get_user_info(reviewer_assigned, room_id)
             user_id = user['person_id']
             user_name = user['first_name']
         except Exception:
@@ -257,6 +260,7 @@ class gitwebhook:
             issue_url = json_string['pull_request']['url']
             repo_name = json_string['repository']['full_name']
             repo_url = json_string['repository']['html_url']
+
 
             hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
             hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
