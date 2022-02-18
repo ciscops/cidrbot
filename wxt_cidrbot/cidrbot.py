@@ -51,6 +51,7 @@ class cidrbot:
         self.webex = webex_edit_message.webex_message()
         self.room_handle = cidrbot_room_setup.room_setup()
         self.roomID = ""
+        self.WEBEX_MESSAGE_CHAR_LIMIT = 4800
 
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
@@ -69,7 +70,10 @@ class cidrbot:
 
             if '#' in message:
                 self.logging.debug("sending message to " + room_id + "message " + message)
-                self.send_wbx_msg(room_id, message, None)
+                message_overflow = self.check_message_overflow(message, room_id, None, None, 'daily_message')
+
+                if message_overflow is False:
+                    self.send_wbx_msg(room_id, message, None)
 
     # Send a message to all users with reminders enabled: Every monday at 12pm est: Cron expression 0 16 ? * 2 *
     # Change this to weekly_reminder_message
@@ -166,9 +170,40 @@ class cidrbot:
             if org_id == self.orgID:
                 self.message_event(json_string, event_type, webex_msg_sender)
 
+    def check_message_overflow(self, message, room_id, message_id, pt_id, request_type):
+        split_keyword = 'Repo:'
+
+        if len(message) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+            return False
+
+        if split_keyword in message:
+            split_message = message.split(split_keyword)
+            message_first_part = ""
+            remainder_message = ""
+            for repo in split_message:
+                self.logging.debug("Length of repo %s", len(repo))
+                if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                    if '**All Issues:**' not in repo:
+                        message_first_part += split_keyword
+                    message_first_part += repo
+                elif len(remainder_message) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                    remainder_message += "Repo:" + repo
+                else:
+                    remainder_message = "One repo has too many issues and exceeds the webex message limit."
+
+        if request_type == 'daily_message':
+            self.send_wbx_msg(room_id, message_first_part, pt_id)
+        if request_type == 'edit_message':
+            self.webex.edit_message(message_id, message_first_part, room_id)
+        self.send_wbx_msg(room_id, remainder_message, pt_id)
+        return True
+
     # Webex sdk does not support editing a message, so the rest api is directly called
-    def edit_wbx_message(self, message_id, message, room_id):
-        self.webex.edit_message(message_id, message, room_id)
+    def edit_wbx_message(self, message_id, message, room_id, pt_id):
+        message_overflow = self.check_message_overflow(message, room_id, message_id, pt_id, 'edit_message')
+
+        if message_overflow is False:
+            self.webex.edit_message(message_id, message, room_id)
 
     # When an issue is assigned, notify users who have reminders enabled
     def webex_notify_room_user(self, text, room_id):
@@ -176,7 +211,7 @@ class cidrbot:
         user_id = text[2]
         chatroom_message = text[3]
         chatroom_message_id = text[4]
-        self.edit_wbx_message(chatroom_message_id, chatroom_message, room_id)
+        self.edit_wbx_message(chatroom_message_id, chatroom_message, room_id, None)
         self.send_directwbx_msg(user_id, message)
 
     # Resolve the message type and shuttle the data off to cmd_list to be processed
@@ -200,7 +235,7 @@ class cidrbot:
             if text[1] is not None and text[1] == "edit message":
                 message = text[2]
                 message_id = text[0]
-                self.edit_wbx_message(message_id, message, self.roomID)
+                self.edit_wbx_message(message_id, message, self.roomID, pt_id)
             elif text[1] is not None and text[1] == 'notify user':
                 self.webex_notify_room_user(text, self.roomID)
             else:
