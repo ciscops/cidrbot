@@ -106,7 +106,7 @@ class gitwebhook:
                 self.triage_issue(installation_id, json_string, x_event_type)
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
-        elif x_event_type 'pull_request_review':
+        elif x_event_type == 'pull_request_review':
             self.send_review_message(installation_id, json_string)
 
     # Assign a new github issue/pr on webhook
@@ -143,6 +143,8 @@ class gitwebhook:
         message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
 
         if len(triage_list) < 1:
+
+            #Check the json, if there are requested reviewers on a new pr (pr only), dm them
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}."
             self.Api.messages.create(room_id, markdown=empty_triage_message)
@@ -212,6 +214,17 @@ class gitwebhook:
                     self.Api.messages.create(room_id, markdown=fail_triage_message, parentId=msg_edit_id)
                     continue
                 break
+
+
+        # if type is list
+
+        if text[1] is not None and text[1] == 'notify user':
+        message = text[0]
+        user_id = text[2]
+    
+        self.send_directwbx_msg(user_id, message)
+
+
         self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
 
     def send_merged_message(self, installation_id, json_string):
@@ -252,7 +265,7 @@ class gitwebhook:
             hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
             hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
             message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
-            self.cidrbot.send_directwbx_msg(user_id, message):
+            self.cidrbot.send_directwbx_msg(user_id, message)
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
