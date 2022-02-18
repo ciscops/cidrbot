@@ -8,6 +8,7 @@ from webexteamssdk import WebexTeamsAPI
 import requests
 from wxt_cidrbot import git_api_handler
 from wxt_cidrbot import dynamo_api_handler
+from wxt_cidrbot import cidrbot
 
 
 class gitwebhook:
@@ -42,6 +43,7 @@ class gitwebhook:
 
         self.git_handle = git_api_handler.githandler()
         self.dynamo = dynamo_api_handler.dynamoapi()
+        self.cidrbot = cidrbot.cidrbot()
         self.Api = WebexTeamsAPI()
         self.dynamodb = ""
         self.table = ''
@@ -102,6 +104,10 @@ class gitwebhook:
         elif x_event_type in ('issues', 'pull_request'):
             if event_action == 'opened':
                 self.triage_issue(installation_id, json_string, x_event_type)
+            elif event_action == 'closed' and x_event_type == 'pull_request':
+                self.send_merged_message(installation_id, json_string)
+        elif x_event_type 'pull_request_review':
+            self.send_review_message(installation_id, json_string)
 
     # Assign a new github issue/pr on webhook
     def triage_issue(self, installation_id, json_string, x_event_type):
@@ -137,7 +143,9 @@ class gitwebhook:
         message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
 
         if len(triage_list) < 1:
-            self.logging.debug("No triage users, quitting triage")
+            self.logging.debug("No triage users, sending update message and quitting")
+            empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}."
+            self.Api.messages.create(room_id, markdown=empty_triage_message)
             sys.exit(1)
 
         URL = f'https://webexapis.com/v1/messages'
@@ -205,6 +213,46 @@ class gitwebhook:
                     continue
                 break
         self.Api.messages.create(room_id, markdown=reply_message, parentId=msg_edit_id)
+
+    def send_merged_message(self, installation_id, json_string):
+        event_info = self.check_installation(installation_id)
+        room_id = event_info[0]['room_id']
+
+        if json_string['pull_request']['merged'] is True:
+            issue_title = json_string['pull_request']['title']
+            issue_url = json_string['pull_request']['url']
+            issue_user = json_string['pull_request']['user']['login']
+            repo_name = json_string['repository']['full_name']
+            repo_url = json_string['repository']['html_url']
+
+            hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+            hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+            merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {issue_user}"
+            self.Api.messages.create(room_id, markdown=merged_message)
+
+    def send_review_message(self, installation_id, json_string):
+        event_info = self.check_installation(installation_id)
+        room_id = event_info[0]['room_id']
+        issue_user = json_string['pull_request']['user']['login']
+
+        try:
+            user = self.dynamo.get_user_info(issue_user, room_id)
+            user_id = user['person_id']
+            user_name = user['first_name']
+        except Exception:
+            self.logging.debug("Cannot locate user, quitting...")
+            sys.exit(1)
+
+        if user['reminders_enabled'] == "on":
+            issue_title = json_string['pull_request']['title']
+            issue_url = json_string['pull_request']['url']
+            repo_name = json_string['repository']['full_name']
+            repo_url = json_string['repository']['html_url']
+
+            hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+            hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+            message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
+            self.cidrbot.send_directwbx_msg(user_id, message):
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()

@@ -86,7 +86,8 @@ class dynamoapi:
                 'users': {},
                 'repos': {},
                 'webhook_ids': id_list,
-                'auth_requests': {}
+                'auth_requests': {},
+                'triage': {}
             }
         )
 
