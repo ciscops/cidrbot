@@ -51,6 +51,7 @@ class cidrbot:
         self.webex = webex_edit_message.webex_message()
         self.room_handle = cidrbot_room_setup.room_setup()
         self.roomID = ""
+        self.webex_message_char_limit = 4800
 
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
@@ -172,7 +173,7 @@ class cidrbot:
     def check_message_overflow(self, message, room_id, message_id, pt_id, request_type):
         split_keyword = 'Repo:'
 
-        if len(message) < 4800:
+        if len(message) < self.webex_message_char_limit:
             return False
 
         if split_keyword in message:
@@ -181,22 +182,23 @@ class cidrbot:
             remainder_message = ""
             for repo in split_message:
                 self.logging.debug("Length of repo %s", len(repo))
-                if len(message_first_part) + len(repo) < 4800:
+                if len(message_first_part) + len(repo) < self.webex_message_char_limit:
                     if '**All Issues:**' not in repo:
                         message_first_part += split_keyword
                     message_first_part += repo
-                elif len(remainder_message) + len(repo) < 4800:
+                elif len(remainder_message) + len(repo) < self.webex_message_char_limit:
                     remainder_message += "Repo:" + repo
                 else:
                     remainder_message = "One repo has too many issues and exceeds the webex message limit."
 
         if request_type == 'daily_message':
             self.send_wbx_msg(room_id, message_first_part, pt_id)
-            self.send_wbx_msg(room_id, remainder_message, pt_id)
         if request_type == 'edit_message':
             self.webex.edit_message(message_id, message_first_part, room_id)
-            self.send_wbx_msg(room_id, remainder_message, pt_id)
+        self.send_wbx_msg(room_id, remainder_message, pt_id)
         return True
+
+
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id, pt_id):
