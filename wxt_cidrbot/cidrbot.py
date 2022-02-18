@@ -53,6 +53,8 @@ class cidrbot:
         self.roomID = ""
         self.WEBEX_MESSAGE_CHAR_LIMIT = 4800
 
+    #This pr is not to be reviewed. It's to test codeowners auto assigning    
+
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
 
