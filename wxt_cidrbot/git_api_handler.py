@@ -123,17 +123,7 @@ class githandler:
         hyperlink_format = f'<a href="{url}">{title}</a>'
 
         self.logging.debug(issue)
-        updated_time = issue['updated_at']
-        date = datetime.strptime(updated_time, self.time_format)
-        timespan = datetime.today() - date
-        days = timespan.days
-
-        if days < 2:
-            issue_color_code = "&#x1F7E2;"  # html code for green
-        elif 2 <= days <= 7:
-            issue_color_code = "&#128992;"  # html code for orange
-        else:
-            issue_color_code = "&#128308;"  # html code for red
+        issue_color_code = self.get_issue_color_code(issue)
 
         text = f"{issue_color_code} &nbsp; {issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
@@ -156,6 +146,8 @@ class githandler:
         assigned_status = status[0]
         assigned = status[1]
 
+        html_color_code = self.get_issue_color_code(issue)
+
         issue_dict.update({
             repo_full_name: {
                 'name': issue_name,
@@ -163,7 +155,8 @@ class githandler:
                 'assigned': assigned,
                 'url': issue_url,
                 'type': issue_type,
-                'number': number
+                'number': number,
+                'color_code': html_color_code
             }
         })
         return issue_dict
@@ -306,6 +299,21 @@ class githandler:
         if self.check_github_user(text_split[3]):
             return self.dynamo.add_triage_user(room_id, text_split[3])
         return f"Cannot find user {text_split[3]}, ensure you have entered a valid github username"
+
+    def get_issue_color_code(self, issue):
+        updated_time = issue['updated_at']
+        date = datetime.strptime(updated_time, self.time_format)
+        timespan = datetime.today() - date
+        days = timespan.days
+
+        issue_color_code = ""
+        if days < 2:
+            issue_color_code = "&#x1F7E2;"  # html code for green
+        elif 2 <= days <= 7:
+            issue_color_code = "&#128992;"  # html code for orange
+        else:
+            issue_color_code = "&#128308;"  # html code for red
+        return issue_color_code
 
     def issue_details(self, text):
 
