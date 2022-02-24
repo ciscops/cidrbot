@@ -6,6 +6,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from webexteamssdk import WebexTeamsAPI
 import requests
+from github import Github
 from wxt_cidrbot import git_api_handler
 from wxt_cidrbot import dynamo_api_handler
 from wxt_cidrbot import cidrbot
@@ -98,7 +99,6 @@ class gitwebhook:
             if len(removed_repos) > 0:
                 for repo in removed_repos:
                     message_uninstall += f" - " + repo + "\n"
-
                 self.Api.messages.create(self.room_id, markdown=message_uninstall)
 
         elif x_event_type in ('issues', 'pull_request'):
@@ -108,10 +108,7 @@ class gitwebhook:
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
                 self.send_review_message(installation_id, json_string)
-        #elif x_event_type == 'pull_request_review':
 
-
-    # Assign a new github issue/pr on webhook
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
         issue_type = "Pull request"
@@ -144,9 +141,24 @@ class gitwebhook:
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
         message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
 
-        if len(triage_list) < 1:
+        token = self.dynamo.get_repo_keys(room_id, repo_name)
+        git_api = Github(token)
+        issue = git_api.get_repo(repo_name).get_issue(int(issue_num))
 
-            #Check the json, if there are requested reviewers on a new pr (pr only), dm them
+        if 'pull_request' in issue.raw_data:
+            issue = issue.as_pull_request()
+            reviewers = issue.raw_data['requested_reviewers']
+            if len(reviewers) > 0:
+                self.logging.debug("Codeowners is active, sending update message and quitting")
+                reviewer_message = ""
+                for reviewer in reviewers:
+                    reviewer_message += reviewer['login'] + ', '
+                reviewer_message = reviewer_message[:-2]
+                empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
+                self.Api.messages.create(room_id, markdown=empty_triage_message)
+                sys.exit(1)
+
+        if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}."
             self.Api.messages.create(room_id, markdown=empty_triage_message)
@@ -216,13 +228,11 @@ class gitwebhook:
                     continue
                 break
 
+        room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
         if isinstance(reply_message, list):
             if reply_message[1] is not None and reply_message[1] == 'notify user':
-                message = reply_message[3]
-                user_id = reply_message[2]
-                self.cidrbot.send_directwbx_msg(user_id, message)
+                room_message = reply_message[3]
 
-        room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
         self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
     def send_merged_message(self, installation_id, json_string):
@@ -244,28 +254,27 @@ class gitwebhook:
     def send_review_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
-        #issue_user = json_string['pull_request']['user']['login']
-        reviewer_assigned = json_string['requested_reviewer']['login']
+        assigned_reviewers = json_string['pull_request']['requested_reviewers']
 
-        try:
-            user = self.dynamo.get_user_info(reviewer_assigned, room_id)
-            user_id = user['person_id']
-            user_name = user['first_name']
-        except Exception:
-            self.logging.debug("Cannot locate user, quitting...")
-            sys.exit(1)
+        for reviewer in assigned_reviewers:
+            try:
+                user = self.dynamo.get_user_info(reviewer['login'], room_id)
+                user_id = user['person_id']
+                user_name = user['first_name']
+            except Exception:
+                self.logging.debug("Cannot locate user, checking next...")
+                continue
 
-        if user['reminders_enabled'] == "on":
-            issue_title = json_string['pull_request']['title']
-            issue_url = json_string['pull_request']['url']
-            repo_name = json_string['repository']['full_name']
-            repo_url = json_string['repository']['html_url']
+            if user['reminders_enabled'] == "on":
+                issue_title = json_string['pull_request']['title']
+                issue_url = json_string['pull_request']['url']
+                repo_name = json_string['repository']['full_name']
+                repo_url = json_string['repository']['html_url']
 
-
-            hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
-            hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-            message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
-            self.cidrbot.send_directwbx_msg(user_id, message)
+                hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+                hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+                message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
+                self.cidrbot.send_directwbx_msg(user_id, message)
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
