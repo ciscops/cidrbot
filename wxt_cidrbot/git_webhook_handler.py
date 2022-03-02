@@ -203,6 +203,14 @@ class gitwebhook:
         user_to_assign = None
         self.git_handle.room_and_edit_id(room_id, None)
 
+        self.assign_triage(
+            issue_count_sorted, repo_name, issue_num, issue_user, room_id, msg_edit_id, hyperlink_format, user_to_assign
+        )
+
+    def assign_triage(
+        self, issue_count_sorted, repo_name, issue_num, issue_user, room_id, msg_edit_id, hyperlink_format,
+        user_to_assign
+    ):
         for user in issue_count_sorted:
             if issue_user != user['username']:
                 user_to_assign = user['username']
