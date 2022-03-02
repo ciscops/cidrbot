@@ -107,7 +107,7 @@ class gitwebhook:
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
-                self.send_review_message(installation_id, json_string)
+                self.send_review_message(installation_id, json_string, False)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -145,18 +145,8 @@ class gitwebhook:
         git_api = Github(token)
         issue = git_api.get_repo(repo_name).get_issue(int(issue_num))
 
-        if 'pull_request' in issue.raw_data:
-            issue = issue.as_pull_request()
-            reviewers = issue.raw_data['requested_reviewers']
-            if len(reviewers) > 0:
-                self.logging.debug("Codeowners is active, sending update message and quitting")
-                reviewer_message = ""
-                for reviewer in reviewers:
-                    reviewer_message += reviewer['login'] + ', '
-                reviewer_message = reviewer_message[:-2]
-                empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
-                self.Api.messages.create(room_id, markdown=empty_triage_message)
-                sys.exit(1)
+        if 'pull_request' in issue.raw_data and len(issue.as_pull_request().raw_data['requested_reviewers']) > 0:
+            self.send_codeowners_message(issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string)
 
         if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
@@ -235,6 +225,21 @@ class gitwebhook:
 
         self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
+    def send_codeowners_message(self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string):
+        issue = issue.as_pull_request()
+        reviewers = issue.raw_data['requested_reviewers']
+
+        self.logging.debug("Codeowners is active, sending update message and quitting")
+        reviewer_message = ""
+        for reviewer in reviewers:
+            reviewer_message += reviewer['login'] + ', '
+        reviewer_message = reviewer_message[:-2]
+        empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
+        self.Api.messages.create(room_id, markdown=empty_triage_message)
+        self.logging.debug("Sending message to code owners")
+        self.send_review_message(installation_id, json_string, True, reviewers)
+        sys.exit(1)
+
     def send_merged_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
@@ -251,11 +256,18 @@ class gitwebhook:
             merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {issue_user}"
             self.Api.messages.create(room_id, markdown=merged_message)
 
-    def send_review_message(self, installation_id, json_string):
+    def send_review_message(self, installation_id, json_string, codeowners_status, reviewers):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
         assigned_reviewers = json_string['pull_request']['requested_reviewers']
+        reviewer_count = len(assigned_reviewers)
+        if reviewer_count > 1 and codeowners_status is False:
+            self.logging.debug("Codeowners will handle message sending, quitting")
+            sys.exit(1)
 
+        if codeowners_status:
+            assigned_reviewers = reviewers
+            
         for reviewer in assigned_reviewers:
             try:
                 user = self.dynamo.get_user_info(reviewer['login'], room_id)
@@ -274,6 +286,7 @@ class gitwebhook:
                 hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
                 hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
                 message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
+                self.logging.debug("Sending message to %s \n message = %s", user_name, message)
                 self.cidrbot.send_directwbx_msg(user_id, message)
 
     def edit_repo(self, room_id, repo, token, request):
