@@ -107,7 +107,7 @@ class gitwebhook:
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
-                self.send_review_message(installation_id, json_string, False)
+                self.send_review_message(installation_id, json_string, False, None)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -146,7 +146,9 @@ class gitwebhook:
         issue = git_api.get_repo(repo_name).get_issue(int(issue_num))
 
         if 'pull_request' in issue.raw_data and len(issue.as_pull_request().raw_data['requested_reviewers']) > 0:
-            self.send_codeowners_message(issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string)
+            self.send_codeowners_message(
+                issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
+            )
 
         if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
@@ -225,7 +227,9 @@ class gitwebhook:
 
         self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
-    def send_codeowners_message(self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string):
+    def send_codeowners_message(
+        self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
+    ):
         issue = issue.as_pull_request()
         reviewers = issue.raw_data['requested_reviewers']
 
@@ -267,7 +271,7 @@ class gitwebhook:
 
         if codeowners_status:
             assigned_reviewers = reviewers
-            
+
         for reviewer in assigned_reviewers:
             try:
                 user = self.dynamo.get_user_info(reviewer['login'], room_id)
