@@ -132,7 +132,7 @@ class gitwebhook:
             sys.exit(1)
 
         issue_title = json_string[query_key]['title']
-        issue_url = json_string[query_key]['url']
+        issue_url = json_string[query_key]['html_url']
         issue_user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
         repo_url = json_string['repository']['html_url']
@@ -296,7 +296,7 @@ class gitwebhook:
         reviewer_count = len(assigned_reviewers)
         requester_message = " by " + json_string['pull_request']['user']['login']
 
-        if reviewer_count > 1 and codeowners_status is False:
+        if reviewer_count > 0 and codeowners_status is False:
             self.logging.debug("Codeowners will handle message sending, quitting")
             return
 
@@ -316,7 +316,7 @@ class gitwebhook:
 
             if user['reminders_enabled'] == "on":
                 issue_title = json_string['pull_request']['title']
-                issue_url = json_string['pull_request']['url']
+                issue_url = json_string['pull_request']['html_url']
                 repo_name = json_string['repository']['full_name']
                 repo_url = json_string['repository']['html_url']
 
