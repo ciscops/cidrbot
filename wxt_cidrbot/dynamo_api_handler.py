@@ -86,7 +86,8 @@ class dynamoapi:
                 'users': {},
                 'repos': {},
                 'webhook_ids': id_list,
-                'auth_requests': {}
+                'auth_requests': {},
+                'triage': {}
             }
         )
 
@@ -384,7 +385,10 @@ class dynamoapi:
 
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
-        return response['Items'][0]['users'][name]
+        if name in response['Items'][0]['users']:
+            return response['Items'][0]['users'][name]
+
+        return None
 
     def create_user(self, name, person_id, full_name, room_id):
         self.get_dynamo()

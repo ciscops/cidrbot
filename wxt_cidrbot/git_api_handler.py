@@ -421,16 +421,15 @@ class githandler:
             return f"Invalid username: {search_name}"
 
         notify_user_status = False
-        try:
-            user = self.dynamo.get_user_info(search_name, self.room_id)
+
+        user = self.dynamo.get_user_info(search_name, self.room_id)
+
+        if user is not None:
             user_id = user['person_id']
 
             if search_name != self.user_search_name:
                 if user['reminders_enabled'] == "on":
                     notify_user_status = True
-        except Exception:
-            pass
-
         try:
             issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
         except Exception:
