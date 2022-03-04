@@ -21,8 +21,7 @@ class gitwebhook:
         if 'WEBEX_TEAMS_ACCESS_TOKEN' in os.environ:
             self.wxt_access_token = os.getenv("WEBEX_TEAMS_ACCESS_TOKEN")
         else:
-            logging.error(
-                "Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
+            logging.error("Environment variable WEBEX_TEAMS_ACCESS_TOKEN must be set")
             sys.exit(1)
 
         if "WEBEX_BOT_ID" in os.environ:
@@ -32,18 +31,15 @@ class gitwebhook:
             sys.exit(1)
 
         if "DYNAMODB_INSTALLATION_TABLE" in os.environ:
-            self.db_installation_name = os.getenv(
-                "DYNAMODB_INSTALLATION_TABLE")
+            self.db_installation_name = os.getenv("DYNAMODB_INSTALLATION_TABLE")
         else:
-            logging.error(
-                "Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
+            logging.error("Environment variable DYNAMODB_INSTALLATION_TABLE must be set")
             sys.exit(1)
 
         if "DYNAMODB_ROOM_TABLE" in os.environ:
             self.db_room_name = os.getenv("DYNAMODB_ROOM_TABLE")
         else:
-            logging.error(
-                "Environment variable DYNAMODB_ROOM_TABLE must be set")
+            logging.error("Environment variable DYNAMODB_ROOM_TABLE must be set")
             sys.exit(1)
 
         self.git_handle = git_api_handler.githandler()
@@ -103,8 +99,7 @@ class gitwebhook:
             if len(removed_repos) > 0:
                 for repo in removed_repos:
                     message_uninstall += f" - " + repo + "\n"
-                self.Api.messages.create(
-                    self.room_id, markdown=message_uninstall)
+                self.Api.messages.create(self.room_id, markdown=message_uninstall)
 
         elif x_event_type in ('issues', 'pull_request'):
             if event_action == 'opened':
@@ -112,8 +107,7 @@ class gitwebhook:
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
-                self.send_review_message(
-                    installation_id, json_string, False, None)
+                self.send_review_message(installation_id, json_string, False, None)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -153,9 +147,14 @@ class gitwebhook:
 
         self.logging.debug("issue.pull_request: %s", issue.pull_request)
 
-
         if issue.pull_request is not None:
-            reviewers = issue.as_pull_request().get_reviewers()
+            reviewers = issue.as_pull_request().get_review_requests()
+            self.logging.debug(reviewers)
+            for reviewer in reviewers:
+                self.logging.debug(reviewer)
+                for r in reviewer:
+                    self.logging.debug(r)
+
             self.logging.debug("reviewers 0 %s, reviewers 1 %s", reviewers[0].totalCount, reviewers[1].totalCount)
             if reviewers[0].totalCount != 0 and reviewers[1].totalCount != 0:
                 self.send_codeowners_message(

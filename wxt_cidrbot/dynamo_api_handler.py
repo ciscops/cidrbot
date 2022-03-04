@@ -385,7 +385,7 @@ class dynamoapi:
 
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
-        if name in esponse['Items'][0]['users']:
+        if name in response['Items'][0]['users']:
             return response['Items'][0]['users'][name]
 
         return None
