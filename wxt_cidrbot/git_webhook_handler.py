@@ -145,16 +145,17 @@ class gitwebhook:
         git_api = Github(token)
         issue = git_api.get_repo(repo_name).get_issue(int(issue_num))
 
-        if 'pull_request' in issue.raw_data and len(issue.as_pull_request().raw_data['requested_reviewers']) > 0:
+        if issue.pull_request is not None and issue.as_pull_request().get_review_requests() is not None:
             self.send_codeowners_message(
                 issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
             )
+            return
 
         if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}."
             self.Api.messages.create(room_id, markdown=empty_triage_message)
-            sys.exit(1)
+            return
 
         URL = f'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
@@ -250,7 +251,6 @@ class gitwebhook:
         self.Api.messages.create(room_id, markdown=empty_triage_message)
         self.logging.debug("Sending message to code owners")
         self.send_review_message(installation_id, json_string, True, reviewers)
-        sys.exit(1)
 
     def send_merged_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
@@ -275,19 +275,20 @@ class gitwebhook:
         reviewer_count = len(assigned_reviewers)
         if reviewer_count > 1 and codeowners_status is False:
             self.logging.debug("Codeowners will handle message sending, quitting")
-            sys.exit(1)
+            return
 
         if codeowners_status:
             assigned_reviewers = reviewers
 
         for reviewer in assigned_reviewers:
-            try:
-                user = self.dynamo.get_user_info(reviewer['login'], room_id)
-                user_id = user['person_id']
-                user_name = user['first_name']
-            except Exception:
+            user = self.dynamo.get_user_info(reviewer['login'], room_id)
+
+            if user is None:
                 self.logging.debug("Cannot locate user, checking next...")
                 continue
+
+            user_id = user['person_id']
+            user_name = user['first_name']
 
             if user['reminders_enabled'] == "on":
                 issue_title = json_string['pull_request']['title']
