@@ -132,7 +132,7 @@ class gitwebhook:
             sys.exit(1)
 
         issue_title = json_string[query_key]['title']
-        issue_url = json_string[query_key]['url']
+        issue_url = json_string[query_key]['html_url']
         issue_user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
         repo_url = json_string['repository']['html_url']
@@ -158,7 +158,8 @@ class gitwebhook:
             self.logging.debug("Number of code owners %s", num_code_owners)
             if num_code_owners > 0:
                 self.send_codeowners_message(
-                    issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
+                    issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string,
+                    issue_user
                 )
                 return
 
@@ -256,7 +257,8 @@ class gitwebhook:
             self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
     def send_codeowners_message(
-        self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
+        self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string,
+        issue_user
     ):
         issue = issue.as_pull_request()
         reviewers = issue.raw_data['requested_reviewers']
@@ -266,7 +268,7 @@ class gitwebhook:
         for reviewer in reviewers:
             reviewer_message += reviewer['login'] + ', '
         reviewer_message = reviewer_message[:-2]
-        empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
+        empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
         self.Api.messages.create(room_id, markdown=empty_triage_message)
         self.logging.debug("Sending message to code owners")
         self.send_review_message(installation_id, json_string, True, reviewers)
@@ -294,7 +296,7 @@ class gitwebhook:
         reviewer_count = len(assigned_reviewers)
         requester_message = " by " + json_string['pull_request']['user']['login']
 
-        if reviewer_count > 1 and codeowners_status is False:
+        if reviewer_count > 0 and codeowners_status is False:
             self.logging.debug("Codeowners will handle message sending, quitting")
             return
 
@@ -314,7 +316,7 @@ class gitwebhook:
 
             if user['reminders_enabled'] == "on":
                 issue_title = json_string['pull_request']['title']
-                issue_url = json_string['pull_request']['url']
+                issue_url = json_string['pull_request']['html_url']
                 repo_name = json_string['repository']['full_name']
                 repo_url = json_string['repository']['html_url']
 
