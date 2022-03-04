@@ -152,6 +152,7 @@ class gitwebhook:
             num_code_owners = 0
             for reviewer in reviewers:
                 for r in reviewer:
+                    self.logging.debug("Debugging r so it actually has a use and passes make pylint %s", r)
                     num_code_owners += 1
 
             self.logging.debug("Number of code owners %s", num_code_owners)
