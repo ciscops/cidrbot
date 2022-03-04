@@ -139,24 +139,23 @@ class gitwebhook:
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-        message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}. Performing automated triage:"
+        message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. Performing automated triage:"
 
         token = self.dynamo.get_repo_keys(room_id, repo_name)
         git_api = Github(token)
         issue = git_api.get_repo(repo_name).get_issue(int(issue_num))
 
-        self.logging.debug("issue.pull_request: %s", issue.pull_request)
-
         if issue.pull_request is not None:
+            self.logging.debug("The issue is a pull request")
             reviewers = issue.as_pull_request().get_review_requests()
-            self.logging.debug(reviewers)
-            for reviewer in reviewers:
-                self.logging.debug(reviewer)
-                for r in reviewer:
-                    self.logging.debug(r)
 
-            self.logging.debug("reviewers 0 %s, reviewers 1 %s", reviewers[0].totalCount, reviewers[1].totalCount)
-            if reviewers[0].totalCount != 0 and reviewers[1].totalCount != 0:
+            num_code_owners = 0
+            for reviewer in reviewers:
+                for r in reviewer:
+                    num_code_owners += 1
+
+            self.logging.debug("Number of code owners %s", num_code_owners)
+            if num_code_owners > 0:
                 self.send_codeowners_message(
                     issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
                 )
@@ -164,7 +163,10 @@ class gitwebhook:
 
         if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
-            empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo}."
+            empty_triage_message = (
+                f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. \n" +
+                "- This issue is not currently assigned. To assign, use **@Cidrbot assign (reponame) (issue_num) (me, Git username, Webex firstname)**"
+            )
             self.Api.messages.create(room_id, markdown=empty_triage_message)
             return
 
@@ -240,12 +242,16 @@ class gitwebhook:
                     continue
                 break
 
-        room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
-        if isinstance(reply_message, list):
-            if reply_message[1] is not None and reply_message[1] == 'notify user':
-                room_message = reply_message[3]
+        if user_to_assign is None:
+            no_triage_message = "Cannot find a valid triage member to assign. This is likely caused by the only triage user being the owner of this pr"
+            self.Api.messages.create(room_id, markdown=no_triage_message, parentId=msg_edit_id)
+        else:
+            room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
+            if isinstance(reply_message, list):
+                if reply_message[1] is not None and reply_message[1] == 'notify user':
+                    room_message = reply_message[3]
 
-        self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
+            self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
     def send_codeowners_message(
         self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string
@@ -284,12 +290,15 @@ class gitwebhook:
         room_id = event_info[0]['room_id']
         assigned_reviewers = json_string['pull_request']['requested_reviewers']
         reviewer_count = len(assigned_reviewers)
+        requester_message = " by " + json_string['pull_request']['user']['login']
+
         if reviewer_count > 1 and codeowners_status is False:
             self.logging.debug("Codeowners will handle message sending, quitting")
             return
 
         if codeowners_status:
             assigned_reviewers = reviewers
+            requester_message = " via codeowners"
 
         for reviewer in assigned_reviewers:
             user = self.dynamo.get_user_info(reviewer['login'], room_id)
@@ -309,7 +318,7 @@ class gitwebhook:
 
                 hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
                 hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-                message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}."
+                message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}{requester_message}."
                 self.logging.debug("Sending message to %s \n message = %s", user_name, message)
                 self.cidrbot.send_directwbx_msg(user_id, message)
 
