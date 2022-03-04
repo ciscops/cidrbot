@@ -166,7 +166,8 @@ class gitwebhook:
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = (
                 f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. \n" +
-                "- This issue is not currently assigned. To assign, use **@Cidrbot assign (reponame) (issue_num) (me, Git username, Webex firstname)**"
+                f"- To assign this issue, use the following \n" +
+                f"- **@Cidrbot assign {repo_name} {issue_num} me|Git username|Webex firstname**"
             )
             self.Api.messages.create(room_id, markdown=empty_triage_message)
             return
