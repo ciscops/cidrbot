@@ -111,7 +111,8 @@ class dynamoapi:
                             'reminders_enabled': 'off',
                             'dup_status': dup_status,
                             'first_name': first_name,
-                            'person_id': person_id
+                            'person_id': person_id,
+                            'git_name': email  # the user's git name is set to their webex email by default
                         }
                     }
                 )
@@ -165,6 +166,26 @@ class dynamoapi:
             return f"Successfully added triage user {user_name}"
         except Exception:
             return f"Cannot add user {user_name}"
+
+    def update_github_username(self, target_name, alias_name, room_id):
+        self.get_dynamo()
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        if target_name in response['Items'][0]['users']:
+            self.table.update_item(
+                Key={'room_id': room_id},
+                UpdateExpression="set #user.#username.#gitname = :name",
+                ExpressionAttributeNames={
+                    '#user': 'users',
+                    '#username': target_name,
+                    '#gitname': 'git_name'
+                },
+                ExpressionAttributeValues={':name': alias_name}
+            )
+            self.logging.debug("updated")
+            return f"Successfully updated git username reference for {target_name} to {alias_name}"
+
+        return "Could not update reference, ensure target name is correct **@Cidrbot update name target alias**"
 
     def remove_triage_user(self, user, room_id):
         self.get_dynamo()
@@ -425,7 +446,8 @@ class dynamoapi:
                     'reminders_enabled': 'off',
                     'dup_status': dup_status,
                     'first_name': first_name,
-                    'person_id': person_id
+                    'person_id': person_id,
+                    'git_name': name
                 }
             }
         )

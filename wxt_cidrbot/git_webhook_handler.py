@@ -268,6 +268,7 @@ class gitwebhook:
         for reviewer in reviewers:
             reviewer_message += reviewer['login'] + ', '
         reviewer_message = reviewer_message[:-2]
+        #issue number here
         empty_triage_message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. This {issue_type} is auto assigned to {reviewer_message} via codeowners"
         self.Api.messages.create(room_id, markdown=empty_triage_message)
         self.logging.debug("Sending message to code owners")
@@ -286,6 +287,7 @@ class gitwebhook:
 
             hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
             hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+            # add issue number here?
             merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {issue_user}"
             self.Api.messages.create(room_id, markdown=merged_message)
 
@@ -305,26 +307,23 @@ class gitwebhook:
             requester_message = " via codeowners"
 
         for reviewer in assigned_reviewers:
-            user = self.dynamo.get_user_info(reviewer['login'], room_id)
+            all_room_users = self.dynamo.user_dict(room_id)
+            for room_user in all_room_users:
+                if all_room_users[room_user]['git_name'] == reviewer['login']:
+                    user_id = all_room_users[room_user]['person_id']
+                    user_name = all_room_users[room_user]['first_name']
 
-            if user is None:
-                self.logging.debug("Cannot locate user, checking next...")
-                continue
+                    if all_room_users[room_user]['reminders_enabled'] == "on":
+                        issue_title = json_string['pull_request']['title']
+                        issue_url = json_string['pull_request']['html_url']
+                        repo_name = json_string['repository']['full_name']
+                        repo_url = json_string['repository']['html_url']
 
-            user_id = user['person_id']
-            user_name = user['first_name']
-
-            if user['reminders_enabled'] == "on":
-                issue_title = json_string['pull_request']['title']
-                issue_url = json_string['pull_request']['html_url']
-                repo_name = json_string['repository']['full_name']
-                repo_url = json_string['repository']['html_url']
-
-                hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
-                hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-                message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}{requester_message}."
-                self.logging.debug("Sending message to %s \n message = %s", user_name, message)
-                self.cidrbot.send_directwbx_msg(user_id, message)
+                        hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+                        hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+                        message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}{requester_message}."
+                        self.logging.debug("Sending message to %s \n message = %s", user_name, message)
+                        self.cidrbot.send_directwbx_msg(user_id, message)
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
