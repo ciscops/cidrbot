@@ -80,7 +80,7 @@ class cmdlist:
 
         words_list = [
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
-            'unassign', 'info', 'test', 'triage'
+            'unassign', 'info', 'test', 'triage', 'update', 'name'
         ]
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage']
 
@@ -198,6 +198,10 @@ class cmdlist:
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
 
+        if "update name" in text:
+            for user in self.webex_mod_status:
+                if user.isModerator:
+                    return self.send_update_msg(room_id, "update name", text_split[3], text_split, pt_id)
         if "manage repos" in text:
             if event_type == "Message":
                 #doesn't need to be webex_mod_status - confusing name, change to "webex user"
@@ -234,6 +238,8 @@ class cmdlist:
             text = f"Searching github for user {name} ..."
         elif cmd_type == 'triage remove':
             text = f"Removing triage user {name} ..."
+        elif cmd_type == 'update name':
+            text = f"Updating {name}'s github name reference..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
@@ -299,6 +305,10 @@ class cmdlist:
             return message_info_list
         if cmd_type == 'triage remove':
             message = self.dynamo.remove_triage_user(name, room_id)
+            message_info_list.append(message)
+            return message_info_list
+        if cmd_type == 'update name':
+            message = self.dynamo.update_github_username(text_split[3], text_split[4], room_id)
             message_info_list.append(message)
             return message_info_list
         return "Interal error"
@@ -394,7 +404,13 @@ class cmdlist:
 
     # Find all the issues assigned to a specified user
     def issues(self, target_user, room_id):
-        assignee_target = target_user
+        #assignee_target = target_user
+        # name == assignee_target or
+        try:
+            git_name_target = self.dynamo.user_dict(room_id)[target_user]['git_name']
+        except Exception:
+            return "Specified username invalid"
+
         for user in self.username_email_dict:
             if self.username_email_dict[user]['login'] == target_user:
                 target_user = user[0].upper() + user[1:]
@@ -414,7 +430,7 @@ class cmdlist:
             if status:
                 assignee = issue_dict[issue]['assigned'].split(", ")
                 for name in assignee:
-                    if name == assignee_target:
+                    if name == git_name_target:
                         edit_message += f"- Issue located: {issue_name} \n"
                         if issues_found < 8:
                             self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
@@ -433,7 +449,7 @@ class cmdlist:
 
         if issues_found > 0:
             return message
-        return "Specified username invalid, or no issues assigned to user"
+        return "no issues assigned to user"
 
     # When weekly_reminder_email function is called by api_gateway, find the current issues assigned to a user
     def get_user_issues(self, assigned_issues_dict, user):

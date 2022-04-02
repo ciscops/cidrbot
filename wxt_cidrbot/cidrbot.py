@@ -95,10 +95,11 @@ class cidrbot:
             for user in room['users']:
                 if room['users'][user]['reminders_enabled'] == "on":
                     self.logging.debug(str(assigned_issues_dict))
-                    self.logging.debug(room['users'][user])
+                    self.logging.debug(room['users'][user]['git_name'])
                     self.logging.debug(room['room_id'])
                     self.logging.debug(user)
-                    text = self.get_command.get_user_issues(assigned_issues_dict, user)
+                    git_username = room['users'][user]['git_name']
+                    text = self.get_command.get_user_issues(assigned_issues_dict, git_username)
 
                     #Side note, maybe add | at the start of each message to make it look nice
                     if text != "No issues":

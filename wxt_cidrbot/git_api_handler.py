@@ -422,14 +422,14 @@ class githandler:
 
         notify_user_status = False
 
-        user = self.dynamo.get_user_info(search_name, self.room_id)
+        all_room_users = self.dynamo.user_dict(self.room_id)
+        for room_user in all_room_users:
+            if all_room_users[room_user]['git_name'] == search_name:
+                user_id = all_room_users[room_user]['person_id']
+                if search_name != self.user_search_name:
+                    if all_room_users[room_user]['reminders_enabled'] == "on":
+                        notify_user_status = True
 
-        if user is not None:
-            user_id = user['person_id']
-
-            if search_name != self.user_search_name:
-                if user['reminders_enabled'] == "on":
-                    notify_user_status = True
         try:
             issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
         except Exception:
