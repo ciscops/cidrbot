@@ -309,22 +309,21 @@ class gitwebhook:
         for reviewer in assigned_reviewers:
             all_room_users = self.dynamo.user_dict(room_id)
             for room_user in all_room_users:
-                if 'git_name' in all_room_users[room_user]:
-                    if all_room_users[room_user]['git_name'] == reviewer['login']:
-                        user_id = all_room_users[room_user]['person_id']
-                        user_name = all_room_users[room_user]['first_name']
+                if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == reviewer['login']:
+                    user_id = all_room_users[room_user]['person_id']
+                    user_name = all_room_users[room_user]['first_name']
 
-                        if all_room_users[room_user]['reminders_enabled'] == "on":
-                            issue_title = json_string['pull_request']['title']
-                            issue_url = json_string['pull_request']['html_url']
-                            repo_name = json_string['repository']['full_name']
-                            repo_url = json_string['repository']['html_url']
+                    if all_room_users[room_user]['reminders_enabled'] == "on":
+                        issue_title = json_string['pull_request']['title']
+                        issue_url = json_string['pull_request']['html_url']
+                        repo_name = json_string['repository']['full_name']
+                        repo_url = json_string['repository']['html_url']
 
-                            hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
-                            hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-                            message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}{requester_message}."
-                            self.logging.debug("Sending message to %s \n message = %s", user_name, message)
-                            self.cidrbot.send_directwbx_msg(user_id, message)
+                        hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
+                        hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
+                        message = f"Hello {user_name}, you have been requested to review {hyperlink_format} in repo {hyperlink_format_repo}{requester_message}."
+                        self.logging.debug("Sending message to %s \n message = %s", user_name, message)
+                        self.cidrbot.send_directwbx_msg(user_id, message)
 
     def edit_repo(self, room_id, repo, token, request):
         repo = repo.lower()
