@@ -421,14 +421,15 @@ class dynamoapi:
 
         dup_status = False
         for user in response['Items'][0]['users']:
-            if response['Items'][0]['users'][user]['first_name'] == first_name:
+            dynamo_user = response['Items'][0]['users'][user]['first_name']
+            if dynamo_user == first_name:
                 dup_status = True
                 self.table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #user.#username.#dup= :name",
                     ExpressionAttributeNames={
                         '#user': 'users',
-                        '#username': name,
+                        '#username': user,
                         '#dup': 'dup_status'
                     },
                     ExpressionAttributeValues={':name': dup_status}
