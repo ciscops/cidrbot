@@ -309,7 +309,8 @@ class gitwebhook:
         for reviewer in assigned_reviewers:
             all_room_users = self.dynamo.user_dict(room_id)
             for room_user in all_room_users:
-                if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == reviewer['login']:
+                if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == reviewer['login'
+                                                                                                                 ]:
                     user_id = all_room_users[room_user]['person_id']
                     user_name = all_room_users[room_user]['first_name']
 
