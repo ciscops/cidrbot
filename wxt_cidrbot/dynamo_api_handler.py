@@ -482,8 +482,7 @@ class dynamoapi:
 
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
-        if len(response['Items'][0]['users'][name]['first_name']) > 0:
-
+        if name in response['Items'][0]['users']:
             self.table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #user.#username",
@@ -493,19 +492,23 @@ class dynamoapi:
                 }
             )
 
-            response_check = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
-
-            dup_counter = 0
+            post_delete_user_query = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            duplicate_named_users = []
 
             user = ''
-            for user in response_check['Items'][0]['users']:
-                if response['Items'][0]['users'][name]['first_name'] == response_check['Items'][0]['users'][user][
-                    'first_name']:
+            for user in post_delete_user_query['Items'][0]['users']:
+                if response['Items'][0]['users'][name]['first_name'] == post_delete_user_query['Items'][0]['users'][
+                    user]['first_name']:
                     if name != user:
-                        dup_counter += 1
+                        self.logging.debug("User found with duplicate first name: %s", user)
+                        self.logging.debug(name)
+                        duplicate_named_users.append(user)
 
-            if len(user) > 0:
-                if 0 < dup_counter < 2:
+            # We only change the status of a duplicate user if they are the only user in a room with that first name
+            # Meaning we don't need to change their dup status is more than 1 dup user exists.
+            # Only Set dup status to false if duplicate_named_users is 1
+            if len(duplicate_named_users) == 1:
+                for user in duplicate_named_users:
                     self.table.update_item(
                         Key={'room_id': room_id},
                         UpdateExpression="set #user.#username.#dup= :name",
