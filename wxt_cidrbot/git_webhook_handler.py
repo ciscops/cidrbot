@@ -60,7 +60,6 @@ class gitwebhook:
             event_info = self.check_installation(installation_id)
 
             room_id = event_info[0]['room_id']
-            token = event_info[0]['access_token']
             person_id = event_info[0]['person_id']
             message_add_repo = ""
             message_remove_repo = ""
@@ -72,13 +71,13 @@ class gitwebhook:
                 if len(repo_added) > 0:
                     repo = repo_added['full_name']
                     message_add_repo += f" - " + repo + "\n"
-                    self.edit_repo(room_id, repo, token, "add")
+                    self.dynamo.edit_repo(room_id, repo, installation_id, "add")
 
             for repo_removed in json_string['repositories_removed']:
                 if len(repo_removed) > 0:
                     repo = repo_removed['full_name']
                     message_remove_repo += f" - " + repo + "\n"
-                    self.edit_repo(room_id, repo, token, "remove")
+                    self.dynamo.edit_repo(room_id, repo, installation_id, "remove")
 
             room = self.Api.rooms.get(room_id)
             room_name = room.title
@@ -326,40 +325,10 @@ class gitwebhook:
                         self.logging.debug("Sending message to %s \n message = %s", user_name, message)
                         self.cidrbot.send_directwbx_msg(user_id, message)
 
-    def edit_repo(self, room_id, repo, token, request):
-        repo = repo.lower()
-        if request == "add":
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
-
-            db_repo_name = None
-            if repo in response['Items'][0]['repos']:
-                db_repo_name = repo
-
-            if db_repo_name is None:
-                self.table.update_item(
-                    Key={'room_id': room_id},
-                    UpdateExpression="set #repo.#reponame= :name",
-                    ExpressionAttributeNames={
-                        '#repo': 'repos',
-                        '#reponame': repo
-                    },
-                    ExpressionAttributeValues={':name': token}
-                )
-        else:
-            self.table.update_item(
-                Key={'room_id': room_id},
-                UpdateExpression="REMOVE #repo.#reponame",
-                ExpressionAttributeNames={
-                    '#repo': 'repos',
-                    '#reponame': repo
-                }
-            )
-
     def delete_installation(self, installation_id):
         event_info = self.check_installation(installation_id)
 
         self.room_id = event_info[0]['room_id']
-        token = event_info[0]['access_token']
 
         self.table.delete_item(Key={'installation_id': str(installation_id)})
         self.table = self.dynamodb.Table(self.db_room_name)
@@ -370,7 +339,7 @@ class gitwebhook:
 
         for repo in response['Items'][0]['repos']:
             self.logging.debug("checking repo")
-            if response['Items'][0]['repos'][repo] == token:
+            if str(response['Items'][0]['repos'][repo]) == str(installation_id):
                 removed_repo_list.append(repo)
 
                 self.table.update_item(
