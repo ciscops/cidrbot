@@ -280,7 +280,6 @@ class dynamoapi:
 
             if current_time > int(installation['Items'][0]['expire_date']):
                 room_id = installation['Items'][0]['room_id']
-                token_to_remove = installation['Items'][0]['access_token']
                 installation_id = installation['Items'][0]['installation_id']
 
                 session = boto3.session.Session()
@@ -309,11 +308,11 @@ class dynamoapi:
                     payload_dict = json.loads(token_payload)
                     token = payload_dict['token']
 
-                    self.update_access_token(installation_id, token, token_to_remove, expire_date, room_id)
+                    self.update_access_token(installation_id, token, expire_date)
 
         return token
 
-    def update_access_token(self, install_id, new_token, old_token, time_to_expire, room_id):
+    def update_access_token(self, install_id, new_token, time_to_expire):
         self.table.update_item(
             Key={'installation_id': install_id},
             UpdateExpression="set #token = :new_token, #expire = :tte",
