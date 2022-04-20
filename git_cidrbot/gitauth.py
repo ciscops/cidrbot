@@ -306,7 +306,7 @@ class gitauth:
                         '#repo': 'repos',
                         '#reponame': repo
                     },
-                    ExpressionAttributeValues={':name': token}
+                    ExpressionAttributeValues={':name': str(install_id)}
                 )
 
     def check_state(self, state):
