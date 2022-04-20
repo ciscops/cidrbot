@@ -263,9 +263,12 @@ class dynamoapi:
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         repo_list = response['Items'][0]['repos']
-        token = repo_list[repo_name]
-
         self.table = self.dynamodb.Table(self.db_install_name)
+
+        repo_install_id = repo_list[repo_name]
+        installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(str(repo_install_id)))
+        token = installation_response['Items'][0]['access_token']
+
         installation = self.table.scan(
             FilterExpression=Attr('room_id').contains(room_id) and Attr("access_token").contains(token)
         )
@@ -324,23 +327,6 @@ class dynamoapi:
             }
         )
 
-        self.table = self.dynamodb.Table(self.db_room_name)
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
-
-        repo_list = response['Items'][0]['repos']
-
-        for repo in repo_list:
-            if repo_list[repo] == old_token:
-                self.table.update_item(
-                    Key={'room_id': room_id},
-                    UpdateExpression="set #repo.#reponame= :name",
-                    ExpressionAttributeNames={
-                        '#repo': 'repos',
-                        '#reponame': repo
-                    },
-                    ExpressionAttributeValues={':name': new_token}
-                )
-
     def git_refresh_token(self, installation_id, encoded_key):
         URL = f'https://api.github.com/app/installations/{installation_id}/access_tokens'
         headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
@@ -356,43 +342,35 @@ class dynamoapi:
         self.logging.debug(str(response.text))
         return None
 
-    def update_repo_list(self, name, request, room_id):
+    def edit_repo(self, room_id, repo, installation_id, request):
         self.get_dynamo()
+        repo = repo.lower()
+        if request == "add":
+            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            db_repo_name = None
+            if repo in response['Items'][0]['repos']:
+                db_repo_name = repo
 
-        db_repo_name = None
-        if name in response['Items'][0]['repos']:
-            db_repo_name = name
-
-        if request == "add repo":
             if db_repo_name is None:
                 self.table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #repo.#reponame= :name",
                     ExpressionAttributeNames={
                         '#repo': 'repos',
-                        '#reponame': name
+                        '#reponame': repo
                     },
-                    ExpressionAttributeValues={':name': ''}
+                    ExpressionAttributeValues={':name': str(installation_id)}
                 )
-
-                return f"Successfuly added repo: {name}"
-
-            return f"Repo: {name} already exists"
-
-        if db_repo_name is not None:
+        else:
             self.table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #repo.#reponame",
                 ExpressionAttributeNames={
                     '#repo': 'repos',
-                    '#reponame': name
+                    '#reponame': repo
                 }
             )
-
-            return f"Successfuly removed repo: {name}"
-        return f"Cannot find repo: {name}"
 
     def get_notif_users(self):
         self.get_dynamo()
