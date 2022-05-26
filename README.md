@@ -7,7 +7,7 @@ Cidrbot is a Lambda based script, leveraging Webex and Github apps to provide us
 ## Requirements  
   * Webex teams bot
   * Github app
-  * Aws    
+  * Aws   
 
 ## Description
 
