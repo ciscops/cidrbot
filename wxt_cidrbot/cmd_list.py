@@ -392,7 +392,7 @@ class cmdlist:
 
         self.dynamo.create_user(webex_msg_sender, user_id, full_name, room_id)
 
-        return f"Welcome to Cidrbot Users room {name_format}, type *@CIDRbot help* for a list of commands\n"
+        return f"Welcome to Cidrbot Users room {name_format}, type *@CIDRbot help* for a list of commands I support\n"
 
     # Create a list of all users, their first name, their username minus the @ email tag
     # Create a secondary list for duplicate users. These lists are used when the bot processes the name in a message
