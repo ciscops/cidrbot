@@ -2,8 +2,8 @@
 PYTHON_EXE = python3
 # PROJECT_NAME is used to create the virtualenv name
 PROJECT_NAME="cidrbot"
-LAMBDA_GITAUTH_FUNCTION_NAME="cidrbot-gitauth"
-LAMBDA_CIDRBOT_FUNCTION_NAME="cidrbot"
+LAMBDA_GITAUTH_FUNCTION_NAME="ppajersk-cidrbot-git-dev"
+LAMBDA_CIDRBOT_FUNCTION_NAME="ppajersk-cidrbot-dev"
 TOPDIR = $(shell git rev-parse --show-toplevel)
 # PYDIRS is where we look for python code that needs to be linted
 # For GitAuth function, PYDIRS=git_cidrbot
