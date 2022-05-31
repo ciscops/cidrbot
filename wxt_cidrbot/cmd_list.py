@@ -382,6 +382,7 @@ class cmdlist:
     # Send a message to the cidrbot-users announcing the new user, and adding their data to the dynamodb table
     def new_user(self, json_string, webex_msg_sender, user_name, room_id):
         self.Api = WebexTeamsAPI()
+
         user_id = json_string['data']['personId']
 
         user_json_details = self.Api.memberships.list(roomId=room_id, personId=user_id)
@@ -392,7 +393,10 @@ class cmdlist:
 
         self.dynamo.create_user(webex_msg_sender, user_id, full_name, room_id)
 
-        return f"Welcome to Cidrbot Users room {name_format}, type *@CIDRbot help* for a list of commands I support\n"
+        room = self.Api.rooms.get(room_id)
+        room_name = room.title
+
+        return f"Welcome to **" + room_name + f"**, {name_format}, type *@CIDRbot help* for a list of commands I support\n"
 
     # Create a list of all users, their first name, their username minus the @ email tag
     # Create a secondary list for duplicate users. These lists are used when the bot processes the name in a message
