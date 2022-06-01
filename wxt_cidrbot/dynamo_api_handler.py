@@ -134,6 +134,18 @@ class dynamoapi:
         except Exception:
             self.logging.debug("Room deleted")
 
+    def get_room_info(self, room_id):
+        self.get_dynamo()
+        
+        response = {}
+        try:
+            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            self.logging.debug(response)
+        except Exception:
+            self.logging.debug("Cannot find room")
+
+        return response
+
     def add_triage_user(self, room_id, user_name):
         self.get_dynamo()
 

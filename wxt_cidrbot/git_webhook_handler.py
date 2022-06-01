@@ -55,6 +55,8 @@ class gitwebhook:
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
+        state = json_string['state']
+        state = state.lower()
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
@@ -107,6 +109,10 @@ class gitwebhook:
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
                 self.send_review_message(installation_id, json_string, False, None)
+
+        elif x_event_type == 'pull_request_review':
+            if state == 'approved':
+                self.send_approved_message(installation_id, json_string)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -325,6 +331,57 @@ class gitwebhook:
                         self.logging.debug("Sending message to %s \n message = %s", user_name, message)
                         self.cidrbot.send_directwbx_msg(user_id, message)
 
+    def send_approved_message(self, installation_id, json_string):
+        event_info = self.check_installation(installation_id)
+        room_id = event_info[0]['room_id']
+        pr_author = json_string['pull_request']['login']
+        approved_reviewers = ""
+
+        all_room_users = self.dynamo.user_dict(room_id)
+        user_id = None
+        for room_user in all_room_users:
+            if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == pr_author:
+                user_id = all_room_users[room_user]['person_id']
+                reminders_enabled = all_room_users[room_user]['reminders_enabled']
+
+        if user_id == None:
+            return    
+
+        if reminders_enabled == 'off':
+            allow_dm = False
+        else:
+            allow_dm = True
+
+        #Get all the reviews for the pull request
+        session = requests.Session()
+        pr_url = json_string['pull_request']['url']
+        pr_reviews_url = pr_url + "/reviews"
+        pr_reviews_search = session.get(pr_reviews_url, headers={})
+        pr_reviews_json = pr_reviews_search.json()
+
+        approved_reviews = 0
+        for review in pr_reviews_json:
+            if review['state'].lower() == 'approved':
+                approved_reviews += 1
+                approved_reviewers += review['user']['login'] + ", "
+        approved_reviewers = approved_reviewers[:-2]
+
+        self.logging.debug("Number approved requests: %d",approved_reviews)
+
+        if approved_reviews >= 1:
+            pull_request_title = json_string['pull_request']['title']
+            pull_request_url = json_string['pull_request']['html_url']
+            pull_request_hyperlink = f'<a href="{pull_request_url}">{pull_request_title}</a>'
+
+            message_room = f"Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}."
+            self.Api.messages.create(room_id, markdown=message_room)
+
+            if allow_dm is True:
+                message_personal = (f"Your pull request {pull_request_hyperlink} has been approved by the following reviewers: {approved_reviewers}." + 
+                " It can now be merged.")
+                self.logging.debug("Sending message to %s \n message = %s", pr_author, message_personal)
+                self.Api.messages.create(toPersonId=user_id, markdown=message_personal)
+
     def delete_installation(self, installation_id):
         event_info = self.check_installation(installation_id)
 
@@ -364,3 +421,5 @@ class gitwebhook:
             sys.exit(1)
 
         return response['Items']
+
+    
