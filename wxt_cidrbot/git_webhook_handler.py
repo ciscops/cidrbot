@@ -337,23 +337,23 @@ class gitwebhook:
     def send_approved_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
-        pr_author = json_string['pull_request']['user']['login']
+        pr_author = json_string['pull_request']['user']['login'].lower()
         approved_reviewers = ""
+        review_message = json_string['review']['body']
+
+        self.logging.debug("review message: %s",review_message)
 
         all_room_users = self.dynamo.user_dict(room_id)
-        user_id = None
+        reminders_enabled = None
         for room_user in all_room_users:
             if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == pr_author:
                 user_id = all_room_users[room_user]['person_id']
-                reminders_enabled = all_room_users[room_user]['reminders_enabled']
+                reminders_enabled = all_room_users[room_user]['reminders_enabled']  
 
-        if user_id == None:
-            return    
-
-        if reminders_enabled == 'off':
-            allow_dm = False
-        else:
+        if reminders_enabled == 'on':
             allow_dm = True
+        else:
+            allow_dm = False
 
         #Get all the reviews for the pull request
         session = requests.Session()
@@ -371,17 +371,22 @@ class gitwebhook:
 
         self.logging.debug("Number approved requests: %d",approved_reviews)
 
-        if approved_reviews >= 1:
+        if approved_reviews >= 2:
             pull_request_title = json_string['pull_request']['title']
             pull_request_url = json_string['pull_request']['html_url']
             pull_request_hyperlink = f'<a href="{pull_request_url}">{pull_request_title}</a>'
 
-            message_room = f"Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}."
+            append_review_message = ""
+            if review_message is not "":
+                append_review_message = f"""\n- Approval message: "{review_message}" """
+
+            message_room = (f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}."""+
+            f"""{append_review_message}""")
             self.Api.messages.create(room_id, markdown=message_room)
 
             if allow_dm is True:
-                message_personal = (f"Your pull request {pull_request_hyperlink} has been approved by the following reviewers: {approved_reviewers}." + 
-                " It can now be merged.")
+                message_personal = (f"""Your pull request {pull_request_hyperlink} has been approved by the following reviewers: {approved_reviewers}.""" + 
+                f""" It can now be merged.{append_review_message} """)
                 self.logging.debug("Sending message to %s \n message = %s", pr_author, message_personal)
                 self.Api.messages.create(toPersonId=user_id, markdown=message_personal)
 
