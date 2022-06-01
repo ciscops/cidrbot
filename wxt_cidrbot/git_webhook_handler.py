@@ -55,8 +55,6 @@ class gitwebhook:
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
-        state = json_string['state']
-        state = state.lower()
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
@@ -111,6 +109,11 @@ class gitwebhook:
                 self.send_review_message(installation_id, json_string, False, None)
 
         elif x_event_type == 'pull_request_review':
+            state = json_string['review']['state']
+            state = state.lower()
+
+            self.logging.debug("state: %s",state)
+
             if state == 'approved':
                 self.send_approved_message(installation_id, json_string)
 
@@ -334,7 +337,7 @@ class gitwebhook:
     def send_approved_message(self, installation_id, json_string):
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
-        pr_author = json_string['pull_request']['login']
+        pr_author = json_string['pull_request']['user']['login']
         approved_reviewers = ""
 
         all_room_users = self.dynamo.user_dict(room_id)
