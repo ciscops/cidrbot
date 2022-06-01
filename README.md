@@ -1,5 +1,5 @@
 # Cidrbot
- Cidrbot is a Lambda based script, leveraging Webex and Github apps to provide users with an interface to interact with Github through a Webex chatroom. It's main purpose is to aid in the Github pipeline by compiling Github data in a central chatroom location for any given installation.
+  Cidrbot is a Lambda based script, leveraging Webex and Github apps to provide users with an interface to interact with Github through a Webex chatroom. It's main purpose is to aid in the Github pipeline by compiling Github data in a central chatroom location for any given installation.
 
 
 ![cidrbot_visual_final](/assets/cidrbot_visual_final.png)
