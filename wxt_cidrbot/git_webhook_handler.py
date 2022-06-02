@@ -112,10 +112,13 @@ class gitwebhook:
             state = json_string['review']['state']
             state = state.lower()
 
-            self.logging.debug("state: %s", state)
+            self.logging.debug("JSON DATA: %s", json_string)
 
             if state == 'approved':
                 self.send_approved_message(installation_id, json_string)
+                
+        elif x_event_type == 'pull_request_review_comment':
+            self.logging.debug("COMMENT JSON DATA: %s", json_string)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
