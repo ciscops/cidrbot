@@ -49,8 +49,7 @@ class gitwebhook:
         self.dynamodb = ""
         self.table = ''
         self.room_id = ''
-        self.green_check_mark = "&#9989;"
-        self.red_x = "&#10060;"
+        self.EMOJIS = {'RED_X': '&#10060;', 'GREEN_CHECK': '&#9989;'}
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
@@ -113,8 +112,6 @@ class gitwebhook:
         elif x_event_type == 'pull_request_review':
             state = json_string['review']['state']
             state = state.lower()
-
-            self.logging.debug("JSON DATA: %s", json.dumps((event["body"])))
 
             if state == 'approved':
                 self.send_approved_message(installation_id, json_string)
@@ -337,6 +334,14 @@ class gitwebhook:
                         self.cidrbot.send_directwbx_msg(user_id, message)
 
     def send_approved_message(self, installation_id, json_string):
+        """
+        Checks to make sure certain paramters are met before sending a message stating a repository is approved
+
+        :param installation_id: string, id for installation
+        :param json_string: string, the body of the webhook
+
+        :return: Nothing
+        """
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
         pr_author = json_string['pull_request']['user']['login'].lower()
@@ -395,13 +400,13 @@ class gitwebhook:
         reviews_mark = self.green_check_mark
 
         #default is red mark
-        check_runs_mark = self.red_x
+        check_runs_mark = self.EMOJIS['RED_X']
         if passed_check_runs is True:
-            check_runs_mark = self.green_check_mark
+            check_runs_mark = self.EMJOIS['GREEN_CHECK']
 
-        mergeable_mark = self.red_x
+        mergeable_mark = self.EMOJIS['RED_X']
         if pr_is_mergeable is True:
-            mergeable_mark = self.green_check_mark
+            mergeable_mark = self.EMJOIS['GREEN_CHECK']
 
         if approved_reviews >= required_approvals:
             message = (

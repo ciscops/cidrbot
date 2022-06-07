@@ -356,6 +356,13 @@ class cmdlist:
         return likely_words
 
     def verify_batch_repos(self, repos):
+        """
+        Determines if input string matches the format string/string
+
+        :param repos: list, list of the full path of repositories
+
+        :return: string, a string of all repos which do not fit the pattern
+        """
         invalid_regex_repos = ""
         for repo in repos:
             if not re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):

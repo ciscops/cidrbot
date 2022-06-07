@@ -190,6 +190,15 @@ class dynamoapi:
         return "Could not update reference, ensure target name is correct **@Cidrbot update name target alias**"
 
     def update_required_approvals(self, approval_number, repos, room_id):
+        """
+        Update the number of required approvals for a specified repo
+
+        :param approval_number: int, the number of required approvals
+        :param repos: list, a list of repos to change
+        :param room_id: string, the id pf the room which the repos are attached
+
+        :return: string, tells if successful or not
+        """
         self.get_dynamo()
 
         failed_repo_updates = ""
@@ -218,6 +227,14 @@ class dynamoapi:
         return f"The following repos were successfully updated: {successful_repo_updates}{message}"
 
     def get_required_approvals(self, repo_name, room_id):
+        """
+        Returns the number of require approvals attached to a repo
+
+        :param repo_name: string, the full path of the repo
+        :param room_id: string, the id pf the room which the repos are attached
+
+        :return: int, the number of required approvals
+        """
         self.get_dynamo()
 
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))

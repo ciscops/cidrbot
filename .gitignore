@@ -137,4 +137,3 @@ lambda_function.py
 lambda-packages*
 .*.sw?
 .vscode/
-Makefile
