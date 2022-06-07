@@ -395,7 +395,6 @@ class gitwebhook:
         #if approved_reviews >= required_approvals:
         #    reviews_mark = "&#x1F7E2;"
         reviews_mark = "&#9989;"
-        bob = 40
         
         check_runs_mark = "&#10060;"
         if passed_check_runs is True:
