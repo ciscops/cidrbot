@@ -49,6 +49,8 @@ class gitwebhook:
         self.dynamodb = ""
         self.table = ''
         self.room_id = ''
+        self.green_check_mark = "&#9989;"
+        self.red_x = "&#10060;"
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
@@ -348,7 +350,7 @@ class gitwebhook:
         all_room_users = self.dynamo.user_dict(room_id)
         reminders_enabled = None
         for room_user in all_room_users:
-            if 'git_name' in all_room_users[room_user] and all_room_users[room_user]['git_name'] == pr_author:
+            if all_room_users[room_user]['git_name'] == pr_author:
                 user_id = all_room_users[room_user]['person_id']
                 reminders_enabled = all_room_users[room_user]['reminders_enabled']
 
@@ -390,16 +392,16 @@ class gitwebhook:
                 passed_check_runs = False
                 break
 
+        reviews_mark = self.green_check_mark
+
         #default is red mark
-        reviews_mark = "&#9989;"
-
-        check_runs_mark = "&#10060;"
+        check_runs_mark = self.red_x
         if passed_check_runs is True:
-            check_runs_mark = "&#9989;"
+            check_runs_mark = self.green_check_mark
 
-        mergeable_mark = "&#10060;"
+        mergeable_mark = self.red_x
         if pr_is_mergeable is True:
-            mergeable_mark = "&#9989;"
+            mergeable_mark = self.green_check_mark
 
         if approved_reviews >= required_approvals:
             message = (

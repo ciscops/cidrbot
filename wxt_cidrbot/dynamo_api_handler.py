@@ -56,6 +56,8 @@ class dynamoapi:
 
         self.dynamodb = ""
         self.table = ""
+        self.repo_schema_name = '#repo'
+        self.reponame_schema = '#reponame'
 
     def get_dynamo(self):
         self.dynamodb = boto3.resource('dynamodb')
@@ -199,8 +201,8 @@ class dynamoapi:
                     Key={'room_id': room_id},
                     UpdateExpression="set #repo.#reponame.#approvals= :name",
                     ExpressionAttributeNames={
-                        '#repo': 'repos',
-                        '#reponame': repo,
+                        self.repo_schema_name: 'repos',
+                        self.reponame_schema: repo,
                         '#approvals': 'required_approvals'
                     },
                     ExpressionAttributeValues={':name': approval_number}
@@ -391,8 +393,8 @@ class dynamoapi:
                     Key={'room_id': room_id},
                     UpdateExpression="set #repo.#reponame= :name",
                     ExpressionAttributeNames={
-                        '#repo': 'repos',
-                        '#reponame': repo
+                        self.repo_schema_name: 'repos',
+                        self.reponame_schema: repo
                     },
                     ExpressionAttributeValues={
                         ':name': {
@@ -406,8 +408,8 @@ class dynamoapi:
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #repo.#reponame",
                 ExpressionAttributeNames={
-                    '#repo': 'repos',
-                    '#reponame': repo
+                    self.repo_schema_name: 'repos',
+                    self.reponame_schema: repo
                 }
             )
 
