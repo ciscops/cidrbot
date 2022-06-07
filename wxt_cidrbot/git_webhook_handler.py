@@ -107,6 +107,17 @@ class gitwebhook:
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
                 self.send_review_message(installation_id, json_string, False, None)
+        bob = 40
+        boby = 41
+        toby = 50
+        linda = 50
+        will = 50
+        paul = 1
+        kris = 2
+        josh = 3
+        bobby = 42
+        willy = 52
+        
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
