@@ -198,6 +198,15 @@ class cmdlist:
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
 
+        if 'change required approvals' in text:
+            for user in self.webex_mod_status:
+                if user.isModerator:
+                    invalid_regex_repos = self.verify_batch_repos(text_split[5:])
+                    if invalid_regex_repos == "":
+                        return self.send_update_msg(room_id, "change approvals", None, text_split[4:], pt_id)
+                    return f"{invalid_regex_repos}cannot be understood. Please verify they are typed correctly"
+                return "That command is only avaliable to space moderators"
+
         if "update name" in text:
             for user in self.webex_mod_status:
                 if user.isModerator:
@@ -209,7 +218,6 @@ class cmdlist:
                     if user.isModerator:
                         self.git_handle.send_auth_link(self.user_person_id, room_id, pt_id)
                         return "Check direct messages to complete Github authentication"
-
                     return "That command is only avaliable to space moderators"
             else:
                 return "That command is only avaliable for moderators in the chatroom"
@@ -219,7 +227,7 @@ class cmdlist:
             "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage) \n"
         )
         return help_text
-
+     
     # Send a status message to the user to let them know the bot is trying to find all the issues, then continue
     def send_update_msg(self, room_id, cmd_type, name, text_split, pt_id):
         if cmd_type == 'assign':
@@ -240,6 +248,8 @@ class cmdlist:
             text = f"Removing triage user {name} ..."
         elif cmd_type == 'update name':
             text = f"Updating {name}'s github name reference..."
+        elif cmd_type == 'change approvals':
+            text = f"Changing required approvals for specified repos..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
@@ -311,6 +321,10 @@ class cmdlist:
             message = self.dynamo.update_github_username(text_split[3], text_split[4], room_id)
             message_info_list.append(message)
             return message_info_list
+        if cmd_type == 'change approvals':
+            message = self.dynamo.update_required_approvals(text_split[0], text_split[1:], room_id)
+            message_info_list.append(message)
+            return message_info_list
         return "Interal error"
 
     # Prevent cidrbot from choosing the wrong name when invoked with webex user's "first name"
@@ -340,6 +354,14 @@ class cmdlist:
                     if key_word not in likely_words:
                         likely_words.append(key_word)
         return likely_words
+
+    def verify_batch_repos(self, repos):
+        invalid_regex_repos = ""
+        for repo in repos:
+            if not re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
+                invalid_regex_repos += repo + " "
+        
+        return invalid_regex_repos
 
     # Determine what repo/issue combination the user entered, and call git_api_handler to assign that issue
     # Names need to be percise, 1 letter off will prevent the issue from being assigned

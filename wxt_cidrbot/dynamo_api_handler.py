@@ -187,6 +187,42 @@ class dynamoapi:
 
         return "Could not update reference, ensure target name is correct **@Cidrbot update name target alias**"
 
+    def update_required_approvals(self, approval_number, repos, room_id):
+        self.get_dynamo()
+
+        failed_repo_updates = ""
+        successful_repo_updates = ""
+
+        for repo in repos:
+            try:
+                self.table.update_item(
+                    Key={'room_id': room_id},
+                    UpdateExpression="set #repo.#reponame.#approvals= :name",
+                    ExpressionAttributeNames={
+                        '#repo': 'repos',
+                        '#reponame': repo,
+                        '#approvals': 'required_approvals'
+                    },
+                    ExpressionAttributeValues={':name': approval_number}
+                )
+                successful_repo_updates += "\n- **" + repo + "**"
+            except Exception as e:
+                failed_repo_updates += "\n- **" + repo + "**"
+
+        message = ""
+        if failed_repo_updates != "":  
+            message = f"\n\nThe following repos were not successfully updated: {failed_repo_updates}"
+
+        return f"The following repos were successfully updated: {successful_repo_updates}{message}"
+
+    def get_required_approvals(self, repo_name, room_id):
+        self.get_dynamo()
+
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        return int(response['Items'][0]['repos'][repo_name]['required_approvals'])
+
+
     def remove_triage_user(self, user, room_id):
         self.get_dynamo()
 
@@ -265,7 +301,7 @@ class dynamoapi:
         repo_list = response['Items'][0]['repos']
         self.table = self.dynamodb.Table(self.db_install_name)
 
-        repo_install_id = repo_list[repo_name]
+        repo_install_id = repo_list[repo_name]['installation_id']
         installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(str(repo_install_id)))
         token = installation_response['Items'][0]['access_token']
 
@@ -359,7 +395,11 @@ class dynamoapi:
                         '#repo': 'repos',
                         '#reponame': repo
                     },
-                    ExpressionAttributeValues={':name': str(installation_id)}
+                    ExpressionAttributeValues={':name': {
+                        'installation_id': str(installation_id),
+                        'required_approvals': 1
+                        }
+                    }
                 )
         else:
             self.table.update_item(

@@ -112,13 +112,10 @@ class gitwebhook:
             state = json_string['review']['state']
             state = state.lower()
 
-            self.logging.debug("JSON DATA: %s", json_string)
+            self.logging.debug("JSON DATA: %s", json.dumps((event["body"])))
 
             if state == 'approved':
                 self.send_approved_message(installation_id, json_string)
-                
-        elif x_event_type == 'pull_request_review_comment':
-            self.logging.debug("COMMENT JSON DATA: %s", json_string)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -341,6 +338,8 @@ class gitwebhook:
         event_info = self.check_installation(installation_id)
         room_id = event_info[0]['room_id']
         pr_author = json_string['pull_request']['user']['login'].lower()
+        branch_name = json_string['pull_request']['head']['ref']
+        repo_name = json_string['pull_request']['head']['repo']['full_name']
         approved_reviewers = ""
         review_message = json_string['review']['body']
 
@@ -371,42 +370,52 @@ class gitwebhook:
                 approved_reviewers += review['user']['login'] + ", "
         approved_reviewers = approved_reviewers[:-2]
 
+        required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
+
         pr_search = session.get(pr_url, headers={})
         pr_json = pr_search.json()
-        pr_mergeable = pr_json['mergeable']
-        pr_mergeable_bool = bool(pr_mergeable)
+        pr_is_mergeable = bool(pr_json['mergeable'])
 
         pull_request_title = json_string['pull_request']['title']
         pull_request_url = json_string['pull_request']['html_url']
         pull_request_hyperlink = f'<a href="{pull_request_url}">{pull_request_title}</a>'
 
-        append_review_message = ""
-        if review_message != "":
-            append_review_message = f"""\n- Approval message: "{review_message}" """
+        #checks-runs
+        check_runs_url = f"https://api.github.com/repos/{repo_name}/commits/{branch_name}/check-runs"
+        check_runs_json = session.get(check_runs_url, headers={}).json()
+        
+        passed_check_runs = True
+        for run in check_runs_json['check_runs']:
+            if run['conclusion'].lower() != 'success':
+                passed_check_runs = False
+                break
 
-        message_room = (f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers} """)
-        message_personal = (
-            f"""Your pull request {pull_request_hyperlink} has been approved by the following reviewers: {approved_reviewers} """
-        )
+        #default is red mark
+        #reviews_mark = "&#10060;"
+        #if approved_reviews >= required_approvals:
+        #    reviews_mark = "&#x1F7E2;"
+        reviews_mark = "&#9989;"
+        bob = 40
+        
+        check_runs_mark = "&#10060;"
+        if passed_check_runs is True:
+            check_runs_mark = "&#9989;"
 
-        if pr_mergeable_bool:
-            message_room_full = (message_room + f"""and passes all the necessary checks{append_review_message}""")
-            message_personal_full = (
-                message_personal + f"""It passes all the necessary checks and can be merged.{append_review_message} """
+        mergeable_mark = "&#10060;"
+        if pr_is_mergeable is True:
+            mergeable_mark = "&#9989;"
+
+        if approved_reviews >= required_approvals:
+            message = (
+                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: "{review_message}"\n"""
+                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks\n- {mergeable_mark} Is Mergeable"""
             )
-        else:
-            message_room_full = (
-                message_room + f"""but does not pass all the necessary checks{append_review_message}"""
-            )
-            message_personal_full = (
-                message_personal + f"""but does not pass all the necessary checks.{append_review_message} """
-            )
 
-        self.Api.messages.create(room_id, markdown=message_room_full)
+            self.Api.messages.create(room_id, markdown=message)
 
-        if allow_dm is True:
-            self.logging.debug("Sending message to %s \n message = %s", pr_author, message_personal_full)
-            self.Api.messages.create(toPersonId=user_id, markdown=message_personal_full)
+            if allow_dm is True:
+                self.logging.debug("Sending message to %s \n message = %s", pr_author, message)
+                self.Api.messages.create(toPersonId=user_id, markdown=message)
 
     def delete_installation(self, installation_id):
         event_info = self.check_installation(installation_id)
@@ -422,7 +431,7 @@ class gitwebhook:
 
         for repo in response['Items'][0]['repos']:
             self.logging.debug("checking repo")
-            if str(response['Items'][0]['repos'][repo]) == str(installation_id):
+            if str(response['Items'][0]['repos'][repo]['installation_id']) == str(installation_id):
                 removed_repo_list.append(repo)
 
                 self.table.update_item(
