@@ -309,8 +309,7 @@ class gitauth:
                     ExpressionAttributeValues={':name': {
                         'installation_id': str(install_id),
                         'required_approvals': 1
-                        }
-                    }
+                    }}
                 )
 
     def check_state(self, state):

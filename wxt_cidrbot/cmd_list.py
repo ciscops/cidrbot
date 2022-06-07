@@ -82,7 +82,7 @@ class cmdlist:
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
             'unassign', 'info', 'test', 'triage', 'update', 'name'
         ]
-        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage']
+        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage', 'approvals']
 
         repo_names = self.dynamo.get_repositories(room_id)
         repo_names = sorted(repo_names, key=str.lower)
@@ -224,10 +224,10 @@ class cmdlist:
 
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
-            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage) \n"
+            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage, approvals) \n"
         )
         return help_text
-     
+
     # Send a status message to the user to let them know the bot is trying to find all the issues, then continue
     def send_update_msg(self, room_id, cmd_type, name, text_split, pt_id):
         if cmd_type == 'assign':
@@ -360,7 +360,7 @@ class cmdlist:
         for repo in repos:
             if not re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
                 invalid_regex_repos += repo + " "
-        
+
         return invalid_regex_repos
 
     # Determine what repo/issue combination the user entered, and call git_api_handler to assign that issue
@@ -553,12 +553,20 @@ class cmdlist:
             "- **@Cidrbot triage remove username** - only for moderators in chat room\n"
         )
 
+        required_approvals_help = (
+            f"-Change required approvals number:\n" +
+            "- Change required approvals (repo name has to be the **exact** github repo path + name)\n" +
+            "- **@Cidrbot change required approvals (n) (repo)** - only for moderators in chat room\n" +
+            "- **@Cidrbot change required approvals (n) (repo1) (repo2)** - supports batch updates\n" +
+            "- n = number of required approvals\n"
+        )
+
         syntax_end_text = (
             f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + required_approvals_help + end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":
@@ -571,6 +579,8 @@ class cmdlist:
             return syntax_help + end_text
         if help_type == "triage":
             return triage_help + end_text
+        if help_type == "approvals":
+            return required_approvals_help + end_text
         return "No help type found"
 
     def list_triage_message(self, room_id):

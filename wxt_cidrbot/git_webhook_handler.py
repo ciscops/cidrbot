@@ -383,7 +383,7 @@ class gitwebhook:
         #checks-runs
         check_runs_url = f"https://api.github.com/repos/{repo_name}/commits/{branch_name}/check-runs"
         check_runs_json = session.get(check_runs_url, headers={}).json()
-        
+
         passed_check_runs = True
         for run in check_runs_json['check_runs']:
             if run['conclusion'].lower() != 'success':
@@ -391,11 +391,8 @@ class gitwebhook:
                 break
 
         #default is red mark
-        #reviews_mark = "&#10060;"
-        #if approved_reviews >= required_approvals:
-        #    reviews_mark = "&#x1F7E2;"
         reviews_mark = "&#9989;"
-        
+
         check_runs_mark = "&#10060;"
         if passed_check_runs is True:
             check_runs_mark = "&#9989;"

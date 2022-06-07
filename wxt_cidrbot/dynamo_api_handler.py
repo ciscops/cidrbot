@@ -206,11 +206,11 @@ class dynamoapi:
                     ExpressionAttributeValues={':name': approval_number}
                 )
                 successful_repo_updates += "\n- **" + repo + "**"
-            except Exception as e:
+            except Exception:
                 failed_repo_updates += "\n- **" + repo + "**"
 
         message = ""
-        if failed_repo_updates != "":  
+        if failed_repo_updates != "":
             message = f"\n\nThe following repos were not successfully updated: {failed_repo_updates}"
 
         return f"The following repos were successfully updated: {successful_repo_updates}{message}"
@@ -221,7 +221,6 @@ class dynamoapi:
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         return int(response['Items'][0]['repos'][repo_name]['required_approvals'])
-
 
     def remove_triage_user(self, user, room_id):
         self.get_dynamo()
@@ -395,9 +394,10 @@ class dynamoapi:
                         '#repo': 'repos',
                         '#reponame': repo
                     },
-                    ExpressionAttributeValues={':name': {
-                        'installation_id': str(installation_id),
-                        'required_approvals': 1
+                    ExpressionAttributeValues={
+                        ':name': {
+                            'installation_id': str(installation_id),
+                            'required_approvals': 1
                         }
                     }
                 )
