@@ -397,7 +397,7 @@ class gitwebhook:
                 passed_check_runs = False
                 break
 
-        reviews_mark = self.green_check_mark
+        reviews_mark = self.EMJOIS['GREEN_CHECK']
 
         #default is red mark
         check_runs_mark = self.EMOJIS['RED_X']
@@ -407,6 +407,8 @@ class gitwebhook:
         mergeable_mark = self.EMOJIS['RED_X']
         if pr_is_mergeable is True:
             mergeable_mark = self.EMJOIS['GREEN_CHECK']
+
+        self.logging.debug("APPROVED: %d %d", approved_reviews, required_approvals)
 
         if approved_reviews >= required_approvals:
             message = (
