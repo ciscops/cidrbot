@@ -49,6 +49,7 @@ class gitwebhook:
         self.dynamodb = ""
         self.table = ''
         self.room_id = ''
+        self.EMOJIS = {'RED_X': '&#10060;', 'GREEN_CHECK': '&#9989;'}
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
@@ -107,6 +108,13 @@ class gitwebhook:
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
                 self.send_review_message(installation_id, json_string, False, None)
+
+        elif x_event_type == 'pull_request_review':
+            state = json_string['review']['state']
+            state = state.lower()
+
+            if state == 'approved':
+                self.send_approved_message(installation_id, json_string)
 
     def triage_issue(self, installation_id, json_string, x_event_type):
         event_info = self.check_installation(installation_id)
@@ -325,6 +333,95 @@ class gitwebhook:
                         self.logging.debug("Sending message to %s \n message = %s", user_name, message)
                         self.cidrbot.send_directwbx_msg(user_id, message)
 
+    def send_approved_message(self, installation_id, json_string):
+        """
+        Checks to make sure certain paramters are met before sending a message stating a repository is approved
+
+        :param installation_id: string, id for installation
+        :param json_string: string, the body of the webhook
+
+        :return: Nothing
+        """
+        event_info = self.check_installation(installation_id)
+        room_id = event_info[0]['room_id']
+        pr_author = json_string['pull_request']['user']['login'].lower()
+        branch_name = json_string['pull_request']['head']['ref']
+        repo_name = json_string['pull_request']['head']['repo']['full_name']
+        approved_reviewers = ""
+        review_message = json_string['review']['body']
+
+        self.logging.debug("review message: %s", review_message)
+
+        all_room_users = self.dynamo.user_dict(room_id)
+        reminders_enabled = None
+        for room_user in all_room_users:
+            if all_room_users[room_user]['git_name'] == pr_author:
+                user_id = all_room_users[room_user]['person_id']
+                reminders_enabled = all_room_users[room_user]['reminders_enabled']
+
+        allow_dm = False
+        if reminders_enabled == 'on':
+            allow_dm = True
+
+        session = requests.Session()
+        #Get all the reviews for the pull request
+        pr_url = json_string['pull_request']['url']
+        pr_reviews_url = pr_url + "/reviews"
+        pr_reviews_search = session.get(pr_reviews_url, headers={})
+        pr_reviews_json = pr_reviews_search.json()
+
+        approved_reviews = 0
+        for review in pr_reviews_json:
+            if review['state'].lower() == 'approved':
+                approved_reviews += 1
+                approved_reviewers += review['user']['login'] + ", "
+        approved_reviewers = approved_reviewers[:-2]
+
+        required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
+
+        pr_search = session.get(pr_url, headers={})
+        pr_json = pr_search.json()
+        pr_is_mergeable = bool(pr_json['mergeable'])
+
+        pull_request_title = json_string['pull_request']['title']
+        pull_request_url = json_string['pull_request']['html_url']
+        pull_request_hyperlink = f'<a href="{pull_request_url}">{pull_request_title}</a>'
+
+        #checks-runs
+        check_runs_url = f"https://api.github.com/repos/{repo_name}/commits/{branch_name}/check-runs"
+        check_runs_json = session.get(check_runs_url, headers={}).json()
+
+        passed_check_runs = True
+        for run in check_runs_json['check_runs']:
+            if run['conclusion'].lower() != 'success':
+                passed_check_runs = False
+                break
+
+        reviews_mark = self.EMOJIS['GREEN_CHECK']
+
+        #default is red mark
+        check_runs_mark = self.EMOJIS['RED_X']
+        if passed_check_runs is True:
+            check_runs_mark = self.EMOJIS['GREEN_CHECK']
+
+        mergeable_mark = self.EMOJIS['RED_X']
+        if pr_is_mergeable is True:
+            mergeable_mark = self.EMOJIS['GREEN_CHECK']
+
+        self.logging.debug("APPROVED: %d %d", approved_reviews, required_approvals)
+
+        if approved_reviews >= required_approvals:
+            message = (
+                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: "{review_message}"\n"""
+                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks\n- {mergeable_mark} Is Mergeable"""
+            )
+
+            self.Api.messages.create(room_id, markdown=message)
+
+            if allow_dm is True:
+                self.logging.debug("Sending message to %s \n message = %s", pr_author, message)
+                self.Api.messages.create(toPersonId=user_id, markdown=message)
+
     def delete_installation(self, installation_id):
         event_info = self.check_installation(installation_id)
 
@@ -339,7 +436,7 @@ class gitwebhook:
 
         for repo in response['Items'][0]['repos']:
             self.logging.debug("checking repo")
-            if str(response['Items'][0]['repos'][repo]) == str(installation_id):
+            if str(response['Items'][0]['repos'][repo]['installation_id']) == str(installation_id):
                 removed_repo_list.append(repo)
 
                 self.table.update_item(

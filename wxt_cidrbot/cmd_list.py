@@ -82,7 +82,7 @@ class cmdlist:
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
             'unassign', 'info', 'test', 'triage', 'update', 'name'
         ]
-        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage']
+        help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage', 'approvals']
 
         repo_names = self.dynamo.get_repositories(room_id)
         repo_names = sorted(repo_names, key=str.lower)
@@ -198,6 +198,15 @@ class cmdlist:
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
 
+        if 'change required approvals' in text:
+            for user in self.webex_mod_status:
+                if user.isModerator:
+                    invalid_regex_repos = self.verify_batch_repos(text_split[5:])
+                    if invalid_regex_repos == "":
+                        return self.send_update_msg(room_id, "change approvals", None, text_split[4:], pt_id)
+                    return f"{invalid_regex_repos}cannot be understood. Please verify they are typed correctly"
+                return "That command is only avaliable to space moderators"
+
         if "update name" in text:
             for user in self.webex_mod_status:
                 if user.isModerator:
@@ -209,14 +218,13 @@ class cmdlist:
                     if user.isModerator:
                         self.git_handle.send_auth_link(self.user_person_id, room_id, pt_id)
                         return "Check direct messages to complete Github authentication"
-
                     return "That command is only avaliable to space moderators"
             else:
                 return "That command is only avaliable for moderators in the chatroom"
 
         help_text = (
             f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
-            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage) \n"
+            "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage, approvals) \n"
         )
         return help_text
 
@@ -240,6 +248,8 @@ class cmdlist:
             text = f"Removing triage user {name} ..."
         elif cmd_type == 'update name':
             text = f"Updating {name}'s github name reference..."
+        elif cmd_type == 'change approvals':
+            text = f"Changing required approvals for specified repos..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
@@ -311,6 +321,10 @@ class cmdlist:
             message = self.dynamo.update_github_username(text_split[3], text_split[4], room_id)
             message_info_list.append(message)
             return message_info_list
+        if cmd_type == 'change approvals':
+            message = self.dynamo.update_required_approvals(text_split[0], text_split[1:], room_id)
+            message_info_list.append(message)
+            return message_info_list
         return "Interal error"
 
     # Prevent cidrbot from choosing the wrong name when invoked with webex user's "first name"
@@ -340,6 +354,21 @@ class cmdlist:
                     if key_word not in likely_words:
                         likely_words.append(key_word)
         return likely_words
+
+    def verify_batch_repos(self, repos):
+        """
+        Determines if input string matches the format string/string
+
+        :param repos: list, list of the full path of repositories
+
+        :return: string, a string of all repos which do not fit the pattern
+        """
+        invalid_regex_repos = ""
+        for repo in repos:
+            if not re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
+                invalid_regex_repos += repo + " "
+
+        return invalid_regex_repos
 
     # Determine what repo/issue combination the user entered, and call git_api_handler to assign that issue
     # Names need to be percise, 1 letter off will prevent the issue from being assigned
@@ -531,12 +560,20 @@ class cmdlist:
             "- **@Cidrbot triage remove username** - only for moderators in chat room\n"
         )
 
+        required_approvals_help = (
+            f"-Change required approvals number:\n" +
+            "- Change required approvals (repo name has to be the **exact** github repo path + name)\n" +
+            "- **@Cidrbot change required approvals (n) (repo)** - only for moderators in chat room\n" +
+            "- **@Cidrbot change required approvals (n) (repo1) (repo2)** - supports batch updates\n" +
+            "- n = number of required approvals\n"
+        )
+
         syntax_end_text = (
             f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"
         )
 
         if help_type == "all":
-            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + end_text
+            return start_text + list_issues_help + assign_issues_help + syntax_help + reminders_help + repos_help + triage_help + required_approvals_help + end_text
         if help_type == "assigning":
             return assign_issues_help + syntax_end_text + end_text
         if help_type == "issues":
@@ -549,6 +586,8 @@ class cmdlist:
             return syntax_help + end_text
         if help_type == "triage":
             return triage_help + end_text
+        if help_type == "approvals":
+            return required_approvals_help + end_text
         return "No help type found"
 
     def list_triage_message(self, room_id):
