@@ -352,7 +352,7 @@ class gitwebhook:
 
         self.logging.debug("review message: %s", review_message)
 
-        token = self.dynamo.get_repo_keys(self.room_id, repo_name)
+        token = self.dynamo.get_repo_keys(room_id, repo_name)
         headers = {'Authorization': 'token ' + token}
 
         all_room_users = self.dynamo.user_dict(room_id)
