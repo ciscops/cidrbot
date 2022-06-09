@@ -352,6 +352,9 @@ class gitwebhook:
 
         self.logging.debug("review message: %s", review_message)
 
+        token = self.dynamo.get_repo_keys(room_id, repo_name)
+        headers = {'Authorization': 'token ' + token}
+
         all_room_users = self.dynamo.user_dict(room_id)
         reminders_enabled = None
         for room_user in all_room_users:
@@ -367,7 +370,7 @@ class gitwebhook:
         #Get all the reviews for the pull request
         pr_url = json_string['pull_request']['url']
         pr_reviews_url = pr_url + "/reviews"
-        pr_reviews_search = session.get(pr_reviews_url, headers={})
+        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
         pr_reviews_json = pr_reviews_search.json()
 
         approved_reviews = 0
@@ -379,7 +382,7 @@ class gitwebhook:
 
         required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
 
-        pr_search = session.get(pr_url, headers={})
+        pr_search = session.get(pr_url, headers=headers)
         pr_json = pr_search.json()
         pr_is_mergeable = bool(pr_json['mergeable'])
 
@@ -389,7 +392,7 @@ class gitwebhook:
 
         #checks-runs
         check_runs_url = f"https://api.github.com/repos/{repo_name}/commits/{branch_name}/check-runs"
-        check_runs_json = session.get(check_runs_url, headers={}).json()
+        check_runs_json = session.get(check_runs_url, headers=headers).json()
 
         passed_check_runs = True
         for run in check_runs_json['check_runs']:
