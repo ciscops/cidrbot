@@ -288,7 +288,6 @@ class gitwebhook:
         if json_string['pull_request']['merged'] is True:
             issue_title = json_string['pull_request']['title']
             issue_url = json_string['pull_request']['html_url']
-            #issue_user = json_string['pull_request']['user']['login']
             merger_user = json_string['pull_request']['merged_by']['login']
             repo_name = json_string['repository']['full_name']
             repo_url = json_string['repository']['html_url']
@@ -402,7 +401,6 @@ class gitwebhook:
                 skipped_checks += 1
             elif run['conclusion'].lower() != 'success':
                 passed_check_runs = False
-                break
 
         skipped_checks_msg = ""
         if skipped_checks > 0:
