@@ -288,14 +288,15 @@ class gitwebhook:
         if json_string['pull_request']['merged'] is True:
             issue_title = json_string['pull_request']['title']
             issue_url = json_string['pull_request']['html_url']
-            issue_user = json_string['pull_request']['user']['login']
+            #issue_user = json_string['pull_request']['user']['login']
+            merger_user = json_string['pull_request']['merged_by']['login']
             repo_name = json_string['repository']['full_name']
             repo_url = json_string['repository']['html_url']
 
             hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
             hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
             # add issue number here?
-            merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {issue_user}"
+            merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {merger_user}"
             self.Api.messages.create(room_id, markdown=merged_message)
 
     def send_review_message(self, installation_id, json_string, codeowners_status, reviewers):
@@ -395,10 +396,17 @@ class gitwebhook:
         check_runs_json = session.get(check_runs_url, headers=headers).json()
 
         passed_check_runs = True
+        skipped_checks = 0
         for run in check_runs_json['check_runs']:
-            if run['conclusion'].lower() != 'success':
+            if run['conclusion'].lower() == 'skipped':
+                skipped_checks += 1
+            elif run['conclusion'].lower() != 'success':
                 passed_check_runs = False
                 break
+
+        skipped_checks_msg = ""
+        if skipped_checks > 0:
+            skipped_checks_msg = f" ({skipped_checks} skipped)"
 
         reviews_mark = self.EMOJIS['GREEN_CHECK']
 
@@ -415,8 +423,9 @@ class gitwebhook:
 
         if approved_reviews >= required_approvals:
             message = (
-                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: "{review_message}"\n"""
-                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks\n- {mergeable_mark} Is Mergeable"""
+                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: {review_message}\n"""
+                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks{skipped_checks_msg}"""
+                f"""\n- {mergeable_mark} Is Mergeable"""
             )
 
             self.Api.messages.create(room_id, markdown=message)
