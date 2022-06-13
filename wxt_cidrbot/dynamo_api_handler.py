@@ -316,6 +316,7 @@ class dynamoapi:
         self.get_dynamo()
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
+        ##this just gets Installation_id
         repo_list = response['Items'][0]['repos']
         self.table = self.dynamodb.Table(self.db_install_name)
 
@@ -326,6 +327,14 @@ class dynamoapi:
         installation = self.table.scan(
             FilterExpression=Attr('room_id').contains(room_id) and Attr("access_token").contains(token)
         )
+        ##
+        ##for repos, .contains(list of repos)
+        #repo_list [a:{}]
+        #change get_repo_key -pass in expire, install_id
+        ##need to change to make sure reutrn all
+        ##installation = self.table.scan(
+            ##FilterExpression=Attr('installation_id').contains(installation_id) and Attr("room_id").contains(room_id)
+        ##)
 
         if installation['Items'][0]['access_token'] == token:
             current_time = int(time.time())
