@@ -288,14 +288,14 @@ class gitwebhook:
         if json_string['pull_request']['merged'] is True:
             issue_title = json_string['pull_request']['title']
             issue_url = json_string['pull_request']['html_url']
-            issue_user = json_string['pull_request']['user']['login']
+            merger_user = json_string['pull_request']['merged_by']['login']
             repo_name = json_string['repository']['full_name']
             repo_url = json_string['repository']['html_url']
 
             hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
             hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
             # add issue number here?
-            merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {issue_user}"
+            merged_message = f"Pull request {hyperlink_format} has been merged in {hyperlink_format_repo} by {merger_user}"
             self.Api.messages.create(room_id, markdown=merged_message)
 
     def send_review_message(self, installation_id, json_string, codeowners_status, reviewers):
@@ -347,7 +347,6 @@ class gitwebhook:
         pr_author = json_string['pull_request']['user']['login'].lower()
         branch_name = json_string['pull_request']['head']['ref']
         repo_name = json_string['pull_request']['head']['repo']['full_name']
-        approved_reviewers = ""
         review_message = json_string['review']['body']
 
         self.logging.debug("review message: %s", review_message)
@@ -368,20 +367,13 @@ class gitwebhook:
 
         session = requests.Session()
         #Get all the reviews for the pull request
-        pr_url = json_string['pull_request']['url']
-        pr_reviews_url = pr_url + "/reviews"
-        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
-        pr_reviews_json = pr_reviews_search.json()
-
-        approved_reviews = 0
-        for review in pr_reviews_json:
-            if review['state'].lower() == 'approved':
-                approved_reviews += 1
-                approved_reviewers += review['user']['login'] + ", "
-        approved_reviewers = approved_reviewers[:-2]
+        reviewers_data = self.get_approved_reviews(json_string, headers)
+        approved_reviewers = reviewers_data['approved_reviewers']
+        approved_reviews = reviewers_data['approved_reviews']
 
         required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
 
+        pr_url = json_string['pull_request']['url']
         pr_search = session.get(pr_url, headers=headers)
         pr_json = pr_search.json()
         pr_is_mergeable = bool(pr_json['mergeable'])
@@ -395,10 +387,16 @@ class gitwebhook:
         check_runs_json = session.get(check_runs_url, headers=headers).json()
 
         passed_check_runs = True
+        skipped_checks = 0
         for run in check_runs_json['check_runs']:
-            if run['conclusion'].lower() != 'success':
+            if run['conclusion'].lower() == 'skipped':
+                skipped_checks += 1
+            elif run['conclusion'].lower() != 'success':
                 passed_check_runs = False
-                break
+
+        skipped_checks_msg = ""
+        if skipped_checks > 0:
+            skipped_checks_msg = f" ({skipped_checks} skipped)"
 
         reviews_mark = self.EMOJIS['GREEN_CHECK']
 
@@ -415,8 +413,9 @@ class gitwebhook:
 
         if approved_reviews >= required_approvals:
             message = (
-                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: "{review_message}"\n"""
-                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks\n- {mergeable_mark} Is Mergeable"""
+                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: {review_message}\n"""
+                f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks{skipped_checks_msg}"""
+                f"""\n- {mergeable_mark} Is Mergeable"""
             )
 
             self.Api.messages.create(room_id, markdown=message)
@@ -464,3 +463,30 @@ class gitwebhook:
             sys.exit(1)
 
         return response['Items']
+
+    def get_approved_reviews(self, json_string, headers):
+        """
+        Obtains the number of approved reviews and those reviewers' name
+
+        :param json_string: string, the body of the webhook
+        :param headers: dictionary, header with token for git api
+
+        :return: dictionary of the number of approved reviews and string of reviewers who approved the pr
+        """
+
+        session = requests.Session()
+        pr_url = json_string['pull_request']['url']
+        pr_reviews_url = pr_url + "/reviews"
+        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
+        pr_reviews_json = pr_reviews_search.json()
+
+        approved_reviewers = ""
+        approved_reviews = 0
+
+        for review in pr_reviews_json:
+            if review['state'].lower() == 'approved':
+                approved_reviews += 1
+                approved_reviewers += review['user']['login'] + ", "
+        approved_reviewers = approved_reviewers[:-2]
+
+        return {'approved_reviews': approved_reviews, 'approved_reviewers': approved_reviewers}
