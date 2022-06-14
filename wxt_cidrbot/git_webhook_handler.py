@@ -465,6 +465,15 @@ class gitwebhook:
         return response['Items']
 
     def get_approved_reviews(self, json_string, headers):
+        """
+        Obtains the number of approved reviews and those reviewers' name
+
+        :param json_string: string, the body of the webhook
+        :param headers: dictionary, header with token for git api
+
+        :return: dictionary of the number of approved reviews and string of reviewers who approved the pr
+        """
+
         session = requests.Session()
         pr_url = json_string['pull_request']['url']
         pr_reviews_url = pr_url + "/reviews"
