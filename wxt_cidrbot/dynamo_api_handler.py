@@ -275,16 +275,20 @@ class dynamoapi:
         self.logging.debug(ids)
         return ids
 
-    def get_all_ids(self):
+    def get_installation_data_by_room(self, room_id):
+        """
+        gets all the installation ids for a certain room from database
+
+        :param room_id: string, id for webex room
+
+        :return dictionary, dictionary with all data of all instllations for a room
+        """
+        ###NOT WORKING - can't query anything else but key which is intall id
         self.get_dynamo()
-        all_room_ids = self.table.scan()
+        self.table = self.dynamodb.Table(self.db_install_name)
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
-        ids = []
-        for i in all_room_ids['Items']:
-            ids.append(i['room_id'])
-
-        self.logging.debug(ids)
-        return ids
+        self.logging.debug("RESPONSE: %s",str(response['Items']))
 
     def user_dict(self, room_id):
         self.get_dynamo()
@@ -311,6 +315,19 @@ class dynamoapi:
 
         return repo_list
 
+    def get_room_data(self, room_id):
+        '''
+        gets all the data in the database row for a specific rooms
+
+        :param room_id: string, id for the webex room
+
+        :return: dictionary, dictionary of everything in row for that room
+        '''
+        self.get_dynamo()
+        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        return response['Items'][0]
+
     def get_triage(self, room_id):
         self.get_dynamo()
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
@@ -323,21 +340,21 @@ class dynamoapi:
 
         return triage_list
 
-    def get_repo_keys(self, room_id, repo_name):
-        self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+    def get_repo_keys(self, room_id, repo_names):
+        #self.get_dynamo()
+        #response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         ##this just gets Installation_id
-        repo_list = response['Items'][0]['repos']
-        self.table = self.dynamodb.Table(self.db_install_name)
+        # repo_list = response['Items'][0]['repos']
+        # self.table = self.dynamodb.Table(self.db_install_name)
 
-        repo_install_id = repo_list[repo_name]['installation_id']
-        installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(str(repo_install_id)))
-        token = installation_response['Items'][0]['access_token']
+        # repo_install_id = repo_list[repo_name]['installation_id']
+        # installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(str(repo_install_id)))
+        # token = installation_response['Items'][0]['access_token']
 
-        installation = self.table.scan(
-            FilterExpression=Attr('room_id').contains(room_id) and Attr("access_token").contains(token)
-        )
+        # installation = self.table.scan(
+        #     FilterExpression=Attr('room_id').contains(room_id) and Attr("access_token").contains(token)
+        # )
         ##
         ##for repos, .contains(list of repos)
         #repo_list [a:{}]
@@ -347,19 +364,41 @@ class dynamoapi:
             ##FilterExpression=Attr('installation_id').contains(installation_id) and Attr("room_id").contains(room_id)
         ##)
 
-        if installation['Items'][0]['access_token'] == token:
-            current_time = int(time.time())
-            self.logging.debug(current_time)
-            self.logging.debug(installation['Items'][0]['expire_date'])
+        #makes into list so can iterate: if just one, will turn into list; even if already list, nothing will happen
+        repo_names = list(repo_names)
 
-            if current_time > int(installation['Items'][0]['expire_date']):
-                token = self.update_access_tokens(installation)
+        repo_tokens = {}
 
-        return token
+        installation_data = self.get_installation_data_by_room(room_id)
 
-    def update_access_tokens(self, installation):
-        room_id = installation['Items'][0]['room_id']
-        installation_id = installation['Items'][0]['installation_id']
+        room_data = self.get_room_data(room_id)
+
+        #gets the installation id from repos and maps them to all associated repos
+        needed_installation_ids = {}
+        for repo in repo_names:
+            installation_id = room_data['repos'][repo]['installation_id']
+            if installation_id not in needed_installation_ids:
+                needed_installation_ids[installation_id] = [repo]
+            else:
+                needed_installation_ids[installation_id].append(repo)
+
+        current_time = int(time.time())
+
+        #Updates token if need be and add dictionary entry with all repos for that token
+        for installation_id in needed_installation_ids:
+            if current_time > int(installation_data[installation_id]['expire_date']):
+                token = self.update_access_tokens(installation_id)
+            else:
+                token = installation_data[installation_id]['access_token']
+            
+            for repo in needed_installation_ids[installation_id]:
+                repo_tokens[repo] = token
+
+        return repo_tokens
+
+    def update_access_tokens(self, installation_id):
+        #room_id = installation['Items'][0]['room_id']
+        #installation_id = installation['Items'][0]['installation_id']
 
         session = boto3.session.Session()
         client = session.client(service_name='secretsmanager', region_name=self.region_name)

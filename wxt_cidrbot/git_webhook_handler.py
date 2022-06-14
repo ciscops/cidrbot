@@ -288,10 +288,6 @@ class gitwebhook:
         if json_string['pull_request']['merged'] is True:
             issue_title = json_string['pull_request']['title']
             issue_url = json_string['pull_request']['html_url']
-<<<<<<< HEAD
-=======
-            #issue_user = json_string['pull_request']['user']['login']
->>>>>>> added skipped ci checks; when PR is merged, changed name to be the merger
             merger_user = json_string['pull_request']['merged_by']['login']
             repo_name = json_string['repository']['full_name']
             repo_url = json_string['repository']['html_url']

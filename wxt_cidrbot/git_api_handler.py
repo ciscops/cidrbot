@@ -164,7 +164,6 @@ class githandler:
     # Iterate through a list of repos, and parse the relevant information from two dictionaries
     def scan_repos(self, request, assign_type, repo_names, edit_status):
         self.session = requests.Session()
-
         start_text = f"**{assign_type} Issues:**\n"
 
         message = f"Retrieving a list of {assign_type} issues, one moment..."
@@ -172,10 +171,11 @@ class githandler:
         issue_dict = {}
         repo_list = []
 
-        repos_from_room_id = self.dynamo.get_repositories(self.room_id)
+        repo_tokens = self.dynamo.get_repo_keys(self.room_id,repo_names)
 
         for repository in repo_names:
-            repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
+            #repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
+            repo_token = repo_tokens[repository]
             self.headers = {'Authorization': 'token ' + repo_token}
             if edit_status and msg_edit_num < 9:
                 message_repo = repository.upper()
