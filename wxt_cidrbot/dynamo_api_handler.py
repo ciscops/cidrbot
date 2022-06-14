@@ -342,37 +342,42 @@ class dynamoapi:
             self.logging.debug(installation['Items'][0]['expire_date'])
 
             if current_time > int(installation['Items'][0]['expire_date']):
-                room_id = installation['Items'][0]['room_id']
-                installation_id = installation['Items'][0]['installation_id']
+                token = self.update_access_tokens(installation)
 
-                session = boto3.session.Session()
-                client = session.client(service_name='secretsmanager', region_name=self.region_name)
-                try:
-                    get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
-                except ClientError as e:
-                    raise e
-                else:
-                    if 'SecretString' in get_secret_value_response:
-                        secret = get_secret_value_response['SecretString']
-                        private_key = secret
-                    else:
-                        decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-                        private_key = json.loads(decoded_binary_secret)
+        return token
 
-                time_epoch = int(time.time())
+    def update_access_tokens(self, installation):
+        room_id = installation['Items'][0]['room_id']
+        installation_id = installation['Items'][0]['installation_id']
 
-                payload = {'iat': time_epoch, 'exp': time_epoch + (10 * 60), 'iss': self.app_id}
+        session = boto3.session.Session()
+        client = session.client(service_name='secretsmanager', region_name=self.region_name)
+        try:
+            get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
+        except ClientError as e:
+            raise e
+        else:
+            if 'SecretString' in get_secret_value_response:
+                secret = get_secret_value_response['SecretString']
+                private_key = secret
+            else:
+                decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
+                private_key = json.loads(decoded_binary_secret)
 
-                encoded_key = jwt.encode(payload, private_key, algorithm="RS256")
-                token_payload = self.git_refresh_token(installation_id, encoded_key)
-                if token_payload is not None:
-                    expire_date = int(time.time()) + 3600
+        time_epoch = int(time.time())
 
-                    payload_dict = json.loads(token_payload)
-                    token = payload_dict['token']
+        payload = {'iat': time_epoch, 'exp': time_epoch + (10 * 60), 'iss': self.app_id}
 
-                    self.update_access_token(installation_id, token, expire_date)
+        encoded_key = jwt.encode(payload, private_key, algorithm="RS256")
+        token_payload = self.git_refresh_token(installation_id, encoded_key)
+        if token_payload is not None:
+            expire_date = int(time.time()) + 3600
 
+            payload_dict = json.loads(token_payload)
+            token = payload_dict['token']
+
+            self.update_access_token(installation_id, token, expire_date)
+        
         return token
 
     def update_access_token(self, install_id, new_token, time_to_expire):

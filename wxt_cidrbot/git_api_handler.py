@@ -172,6 +172,8 @@ class githandler:
         issue_dict = {}
         repo_list = []
 
+        repos_from_room_id = self.dynamo.get_repositories(self.room_id)
+
         for repository in repo_names:
             repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
             self.headers = {'Authorization': 'token ' + repo_token}
