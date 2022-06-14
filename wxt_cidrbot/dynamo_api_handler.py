@@ -275,6 +275,17 @@ class dynamoapi:
         self.logging.debug(ids)
         return ids
 
+    def get_all_ids(self):
+        self.get_dynamo()
+        all_room_ids = self.table.scan()
+
+        ids = []
+        for i in all_room_ids['Items']:
+            ids.append(i['room_id'])
+
+        self.logging.debug(ids)
+        return ids
+
     def user_dict(self, room_id):
         self.get_dynamo()
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
