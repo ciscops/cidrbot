@@ -368,12 +368,13 @@ class gitwebhook:
 
         session = requests.Session()
         #Get all the reviews for the pull request
-        reviewers_data = self.get_approved_reviews(json_string,headers)
+        reviewers_data = self.get_approved_reviews(json_string, headers)
         approved_reviewers = reviewers_data['approved_reviewers']
         approved_reviews = reviewers_data['approved_reviews']
 
         required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
 
+        pr_url = json_string['pull_request']['url']
         pr_search = session.get(pr_url, headers=headers)
         pr_json = pr_search.json()
         pr_is_mergeable = bool(pr_json['mergeable'])
@@ -464,7 +465,7 @@ class gitwebhook:
 
         return response['Items']
 
-    def get_approved_reviews(self,json_string,headers):
+    def get_approved_reviews(self, json_string, headers):
         session = requests.Session()
         pr_url = json_string['pull_request']['url']
         pr_reviews_url = pr_url + "/reviews"
@@ -478,4 +479,4 @@ class gitwebhook:
                 approved_reviewers += review['user']['login'] + ", "
         approved_reviewers = approved_reviewers[:-2]
 
-        return {'approved_reviews':approved_reviews,'approved_reviewers':approved_reviewers}
+        return {'approved_reviews': approved_reviews, 'approved_reviewers': approved_reviewers}
