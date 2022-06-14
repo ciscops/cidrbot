@@ -347,7 +347,6 @@ class gitwebhook:
         pr_author = json_string['pull_request']['user']['login'].lower()
         branch_name = json_string['pull_request']['head']['ref']
         repo_name = json_string['pull_request']['head']['repo']['full_name']
-        approved_reviewers = ""
         review_message = json_string['review']['body']
 
         self.logging.debug("review message: %s", review_message)
@@ -472,7 +471,9 @@ class gitwebhook:
         pr_reviews_search = session.get(pr_reviews_url, headers=headers)
         pr_reviews_json = pr_reviews_search.json()
 
+        approved_reviewers = ""
         approved_reviews = 0
+
         for review in pr_reviews_json:
             if review['state'].lower() == 'approved':
                 approved_reviews += 1
