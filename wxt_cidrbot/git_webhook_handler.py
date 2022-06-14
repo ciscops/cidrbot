@@ -368,17 +368,9 @@ class gitwebhook:
 
         session = requests.Session()
         #Get all the reviews for the pull request
-        pr_url = json_string['pull_request']['url']
-        pr_reviews_url = pr_url + "/reviews"
-        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
-        pr_reviews_json = pr_reviews_search.json()
-
-        approved_reviews = 0
-        for review in pr_reviews_json:
-            if review['state'].lower() == 'approved':
-                approved_reviews += 1
-                approved_reviewers += review['user']['login'] + ", "
-        approved_reviewers = approved_reviewers[:-2]
+        reviewers_data = self.get_approved_reviews(json_string,headers)
+        approved_reviewers = reviewers_data['approved_reviewers']
+        approved_reviews = reviewers_data['approved_reviews']
 
         required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
 
@@ -471,3 +463,19 @@ class gitwebhook:
             sys.exit(1)
 
         return response['Items']
+
+    def get_approved_reviews(self,json_string,headers):
+        session = requests.Session()
+        pr_url = json_string['pull_request']['url']
+        pr_reviews_url = pr_url + "/reviews"
+        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
+        pr_reviews_json = pr_reviews_search.json()
+
+        approved_reviews = 0
+        for review in pr_reviews_json:
+            if review['state'].lower() == 'approved':
+                approved_reviews += 1
+                approved_reviewers += review['user']['login'] + ", "
+        approved_reviewers = approved_reviewers[:-2]
+
+        return {'approved_reviews':approved_reviews,'approved_reviewers':approved_reviewers}
