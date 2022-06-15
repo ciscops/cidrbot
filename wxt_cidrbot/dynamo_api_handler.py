@@ -54,14 +54,47 @@ class dynamoapi:
             logging.error("Environment variable REGION_NAME must be set")
             sys.exit(1)
 
-        self.dynamodb = ""
+        self.dynamodb = None
         self.table = ""
         self.repo_schema_name = '#repo'
         self.reponame_schema = '#reponame'
+        self.boto3_session = None
+        self.boto3_client = None
+        self.current_table_name = None
 
     def get_dynamo(self):
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table(self.db_room_name)
+        """
+        if not already done, creates a dynamodb session and switches the current table to the room table
+        
+        return: None
+        """
+        if self.dynamodb is None:
+            self.dynamodb = boto3.resource('dynamodb')
+        if self.current_table_name != self.db_room_name:
+            self.table = self.dynamodb.Table(self.db_room_name)
+            self.current_table_name = self.db_room_name
+
+    def get_dynamo_installation_table(self):
+        """
+        if not already done, creates a dynamodb session and switches the current table to the installation table
+        
+        return: None
+        """
+        if self.dynamodb is None:
+            self.dynamodb = boto3.resource('dynamodb')
+        if self.current_table_name != self.db_install_name:
+            self.table = self.dynamodb.Table(self.db_install_name)
+            self.current_table_name = self.db_install_name
+
+    def get_boto3_session(self):
+        """
+        if it does not exist, creates a boto3 session and client to retrieve json web tokens
+        
+        return: None
+        """
+        if self.boto3_session is None:
+            self.boto3_session = boto3.session.Session()
+            self.boto3_client = self.boto3_session.client(service_name='secretsmanager', region_name=self.region_name)
 
     def add_auth_request(self, state, state_value):
         self.dynamodb = boto3.resource('dynamodb')
@@ -275,21 +308,6 @@ class dynamoapi:
         self.logging.debug(ids)
         return ids
 
-    def get_installation_data_by_room(self, room_id):
-        """
-        gets all the installation ids for a certain room from database
-
-        :param room_id: string, id for webex room
-
-        :return dictionary, dictionary with all data of all instllations for a room
-        """
-        ###NOT WORKING - can't query anything else but key which is intall id
-        self.get_dynamo()
-        self.table = self.dynamodb.Table(self.db_install_name)
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
-
-        self.logging.debug("RESPONSE: %s",str(response['Items']))
-
     def user_dict(self, room_id):
         self.get_dynamo()
         response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
@@ -341,39 +359,22 @@ class dynamoapi:
         return triage_list
 
     def get_repo_keys(self, room_id, repo_names):
-        #self.get_dynamo()
-        #response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        """
+        retrieves all the tokens for the given repos
 
-        ##this just gets Installation_id
-        # repo_list = response['Items'][0]['repos']
-        # self.table = self.dynamodb.Table(self.db_install_name)
+        :param room_id: string, id for the webex room
+        :param repo_names: list | string, the repo name[s] from which to retrieve the tokens
 
-        # repo_install_id = repo_list[repo_name]['installation_id']
-        # installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(str(repo_install_id)))
-        # token = installation_response['Items'][0]['access_token']
-
-        # installation = self.table.scan(
-        #     FilterExpression=Attr('room_id').contains(room_id) and Attr("access_token").contains(token)
-        # )
-        ##
-        ##for repos, .contains(list of repos)
-        #repo_list [a:{}]
-        #change get_repo_key -pass in expire, install_id
-        ##need to change to make sure reutrn all
-        ##installation = self.table.scan(
-            ##FilterExpression=Attr('installation_id').contains(installation_id) and Attr("room_id").contains(room_id)
-        ##)
-
-        #makes into list so can iterate: if just one, will turn into list; even if already list, nothing will happen
-        repo_names = list(repo_names)
-
+        :return: dictionary, all the repos attached with their respective token
+        """
+        if isinstance(repo_names, list):
+            repo_names = [repo_names]
+        room_data = self.get_room_data(room_id)
+        self.get_dynamo_installation_table()
         repo_tokens = {}
 
-        installation_data = self.get_installation_data_by_room(room_id)
-
-        room_data = self.get_room_data(room_id)
-
         #gets the installation id from repos and maps them to all associated repos
+        #Ids = {id1:[repo1,repo2],id2:[repo3,repo4]}
         needed_installation_ids = {}
         for repo in repo_names:
             installation_id = room_data['repos'][repo]['installation_id']
@@ -385,25 +386,32 @@ class dynamoapi:
         current_time = int(time.time())
 
         #Updates token if need be and add dictionary entry with all repos for that token
+        #repo_tokens = {repo1:token,repo2:token}
         for installation_id in needed_installation_ids:
-            if current_time > int(installation_data[installation_id]['expire_date']):
+            installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(installation_id))
+            installation_data = installation_response['Items'][0]
+
+            if current_time > int(installation_data['expire_date']):
                 token = self.update_access_tokens(installation_id)
             else:
-                token = installation_data[installation_id]['access_token']
-            
+                token = installation_data['access_token']
+
             for repo in needed_installation_ids[installation_id]:
                 repo_tokens[repo] = token
 
         return repo_tokens
 
     def update_access_tokens(self, installation_id):
-        #room_id = installation['Items'][0]['room_id']
-        #installation_id = installation['Items'][0]['installation_id']
+        """
+        retrieves new json token
 
-        session = boto3.session.Session()
-        client = session.client(service_name='secretsmanager', region_name=self.region_name)
+        :param installation_id: string, the id for the repo's installation
+        
+        return: string, the token for the installation_id
+        """
+        self.get_boto3_session()
         try:
-            get_secret_value_response = client.get_secret_value(SecretId=self.secret_name)
+            get_secret_value_response = self.boto3_client.get_secret_value(SecretId=self.secret_name)
         except ClientError as e:
             raise e
         else:
@@ -427,7 +435,7 @@ class dynamoapi:
             token = payload_dict['token']
 
             self.update_access_token(installation_id, token, expire_date)
-        
+
         return token
 
     def update_access_token(self, install_id, new_token, time_to_expire):

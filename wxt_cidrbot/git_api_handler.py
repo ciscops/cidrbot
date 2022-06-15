@@ -163,6 +163,7 @@ class githandler:
 
     # Iterate through a list of repos, and parse the relevant information from two dictionaries
     def scan_repos(self, request, assign_type, repo_names, edit_status):
+        self.logging.debug("START TIME")
         self.session = requests.Session()
         start_text = f"**{assign_type} Issues:**\n"
 
@@ -171,7 +172,7 @@ class githandler:
         issue_dict = {}
         repo_list = []
 
-        repo_tokens = self.dynamo.get_repo_keys(self.room_id,repo_names)
+        repo_tokens = self.dynamo.get_repo_keys(self.room_id, repo_names)
 
         for repository in repo_names:
             #repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
@@ -241,7 +242,9 @@ class githandler:
             final_repo_order = ' '.join(repo_list)
             final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
             self.logging.debug("Total msg len %s", len(start_text + final_repo_order))
+            self.logging.debug("STOP TIME 1")
             return start_text + final_repo_order
+        self.logging.debug("STOP TIME 2")
         return issue_dict
 
     def user_name(self, search_name):
@@ -265,7 +268,8 @@ class githandler:
 
     def check_github_repo(self, repo_name):
         if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo_name):
-            repo_token = self.dynamo.get_repo_keys(self.room_id, repo_name)
+            repo_token_dict = self.dynamo.get_repo_keys(self.room_id, repo_name)
+            repo_token = repo_token_dict[repo_name]
 
             self.session = requests.Session()
             self.headers = {'Authorization': 'token ' + repo_token}
@@ -325,7 +329,8 @@ class githandler:
         except Exception:
             return f"Use Syntax: **@cidrbot (repo) (issue#) info**"
 
-        token = self.dynamo.get_repo_keys(self.room_id, repo)
+        token_dict = self.dynamo.get_repo_keys(self.room_id, repo)
+        token = token_dict[repo]
 
         self.git_api = Github(token)
         self.session = requests.Session()
@@ -411,7 +416,8 @@ class githandler:
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
     def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
         try:
-            token = self.dynamo.get_repo_keys(self.room_id, repo)
+            token_dict = self.dynamo.get_repo_keys(self.room_id, repo)
+            token = token_dict[repo]
         except Exception:
             return f"Cannot find repo {repo}, verify spelling"
 
