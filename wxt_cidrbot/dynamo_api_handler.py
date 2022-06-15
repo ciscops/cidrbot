@@ -397,7 +397,9 @@ class dynamoapi:
         #Updates token if need be and add dictionary entry with all repos for that token
         #repo_tokens = {repo1:token,repo2:token}
         for installation_id in needed_installation_ids:
-            installation_response = self.installation_table.query(KeyConditionExpression=Key('installation_id').eq(installation_id))
+            installation_response = self.installation_table.query(
+                KeyConditionExpression=Key('installation_id').eq(installation_id)
+            )
             installation_data = installation_response['Items'][0]
 
             if current_time > int(installation_data['expire_date']):
