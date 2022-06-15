@@ -175,7 +175,6 @@ class githandler:
         repo_tokens = self.dynamo.get_repo_keys(self.room_id, repo_names)
 
         for repository in repo_names:
-            #repo_token = self.dynamo.get_repo_keys(self.room_id, repository)
             repo_token = repo_tokens[repository]
             self.headers = {'Authorization': 'token ' + repo_token}
             if edit_status and msg_edit_num < 9:

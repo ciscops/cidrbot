@@ -400,10 +400,6 @@ class gitwebhook:
         if skipped_checks > 0:
             skipped_checks_msg = f" ({skipped_checks} skipped)"
 
-        skipped_checks_msg = ""
-        if skipped_checks > 0:
-            skipped_checks_msg = f" ({skipped_checks} skipped)"
-
         reviews_mark = self.EMOJIS['GREEN_CHECK']
 
         #default is red mark
