@@ -55,12 +55,13 @@ class dynamoapi:
             sys.exit(1)
 
         self.dynamodb = None
-        self.table = ""
+        self.room_table = None
+        self.installation_table = None
+        self.auth_table = None
         self.repo_schema_name = '#repo'
         self.reponame_schema = '#reponame'
         self.boto3_session = None
         self.boto3_client = None
-        self.current_table_name = None
 
     def get_dynamo(self):
         """
@@ -70,9 +71,8 @@ class dynamoapi:
         """
         if self.dynamodb is None:
             self.dynamodb = boto3.resource('dynamodb')
-        if self.current_table_name != self.db_room_name:
-            self.table = self.dynamodb.Table(self.db_room_name)
-            self.current_table_name = self.db_room_name
+        if self.room_table is None:
+            self.room_table = self.dynamodb.Table(self.db_room_name)
 
     def get_dynamo_installation_table(self):
         """
@@ -82,9 +82,19 @@ class dynamoapi:
         """
         if self.dynamodb is None:
             self.dynamodb = boto3.resource('dynamodb')
-        if self.current_table_name != self.db_install_name:
-            self.table = self.dynamodb.Table(self.db_install_name)
-            self.current_table_name = self.db_install_name
+        if self.installation_table is None:
+            self.installation_table = self.dynamodb.Table(self.db_install_name)
+
+    def get_dynamo_auth_table(self):
+        """
+        if not already done, creates a dynamodb session and switches the current table to the auth table
+        
+        return: None
+        """
+        if self.dynamodb is None:
+            self.dynamodb = boto3.resource('dynamodb')
+        if self.auth_table is None:
+            self.auth_table = self.dynamodb.Table([self.db_auth_name])
 
     def get_boto3_session(self):
         """
@@ -97,13 +107,12 @@ class dynamoapi:
             self.boto3_client = self.boto3_session.client(service_name='secretsmanager', region_name=self.region_name)
 
     def add_auth_request(self, state, state_value):
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.Table(self.db_auth_name)
+        self.get_dynamo_auth_table()
 
         time_to_expire = datetime.datetime.today() + datetime.timedelta(minutes=10)
         expire_date = int(time.mktime(time_to_expire.timetuple()))
 
-        self.table.put_item(
+        self.auth_table.put_item(
             Item={
                 'state': state,
                 'personId': state_value['personId'],
@@ -115,7 +124,7 @@ class dynamoapi:
 
     def create_room(self, room_id, members, id_list):
         self.get_dynamo()
-        self.table.put_item(
+        self.room_table.put_item(
             Item={
                 'room_id': room_id,
                 'users': {},
@@ -134,7 +143,7 @@ class dynamoapi:
 
             self.logging.debug("Adding user %s, %s", email, first_name)
             try:
-                self.table.update_item(
+                self.room_table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #user.#username= :name",
                     ExpressionAttributeNames={
@@ -160,10 +169,10 @@ class dynamoapi:
 
     def delete_room(self, room_id):
         self.get_dynamo()
-        self.table.delete_item(Key={'room_id': room_id})
+        self.room_table.delete_item(Key={'room_id': room_id})
 
         try:
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
             self.logging.debug("Room could not be deleted")
             self.logging.debug(response)
         except Exception:
@@ -173,23 +182,23 @@ class dynamoapi:
         self.get_dynamo()
 
         try:
-            response = self.table.query(
+            response = self.room_table.query(
                 KeyConditionExpression=Key('room_id').eq(room_id), FilterExpression=Attr('triage').exists()
             )
-            user_exists = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            user_exists = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
             if 'triage' in user_exists['Items'][0]:
                 if user_name in user_exists['Items'][0]['triage']:
                     return f"{user_name} is already in triage list"
             self.logging.debug(user_exists)
 
             if response['Count'] == 0:
-                self.table.update_item(
+                self.room_table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression='SET #triage= :value',
                     ExpressionAttributeNames={'#triage': 'triage'},
                     ExpressionAttributeValues={':value': {}}
                 )
-            self.table.update_item(
+            self.room_table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="SET #triage.#name= :value",
                 ExpressionAttributeNames={
@@ -204,10 +213,10 @@ class dynamoapi:
 
     def update_github_username(self, target_name, alias_name, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         if target_name in response['Items'][0]['users']:
-            self.table.update_item(
+            self.room_table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="set #user.#username.#gitname = :name",
                 ExpressionAttributeNames={
@@ -239,7 +248,7 @@ class dynamoapi:
 
         for repo in repos:
             try:
-                self.table.update_item(
+                self.room_table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #repo.#reponame.#approvals= :name",
                     ExpressionAttributeNames={
@@ -270,7 +279,7 @@ class dynamoapi:
         """
         self.get_dynamo()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         return int(response['Items'][0]['repos'][repo_name]['required_approvals'])
 
@@ -278,7 +287,7 @@ class dynamoapi:
         self.get_dynamo()
 
         try:
-            self.table.update_item(
+            self.room_table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #triagelist.#username",
                 ExpressionAttributeNames={
@@ -299,7 +308,7 @@ class dynamoapi:
 
     def get_all_ids(self):
         self.get_dynamo()
-        all_room_ids = self.table.scan()
+        all_room_ids = self.room_table.scan()
 
         ids = []
         for i in all_room_ids['Items']:
@@ -310,20 +319,20 @@ class dynamoapi:
 
     def user_dict(self, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]['users']
 
     def get_webhooks(self, room_id):
         self.get_dynamo()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]['webhook_ids']
 
     def get_repositories(self, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         repo_dict = response['Items'][0]['repos']
         repo_list = []
@@ -342,13 +351,13 @@ class dynamoapi:
         :return: dictionary, dictionary of everything in row for that room
         '''
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         return response['Items'][0]
 
     def get_triage(self, room_id):
         self.get_dynamo()
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         triage_dict = response['Items'][0]['triage']
         triage_list = []
@@ -388,7 +397,7 @@ class dynamoapi:
         #Updates token if need be and add dictionary entry with all repos for that token
         #repo_tokens = {repo1:token,repo2:token}
         for installation_id in needed_installation_ids:
-            installation_response = self.table.query(KeyConditionExpression=Key('installation_id').eq(installation_id))
+            installation_response = self.installation_table.query(KeyConditionExpression=Key('installation_id').eq(installation_id))
             installation_data = installation_response['Items'][0]
 
             if current_time > int(installation_data['expire_date']):
@@ -439,7 +448,7 @@ class dynamoapi:
         return token
 
     def update_access_token(self, install_id, new_token, time_to_expire):
-        self.table.update_item(
+        self.installation_table.update_item(
             Key={'installation_id': install_id},
             UpdateExpression="set #token = :new_token, #expire = :tte",
             ExpressionAttributeNames={
@@ -471,14 +480,14 @@ class dynamoapi:
         self.get_dynamo()
         repo = repo.lower()
         if request == "add":
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
             db_repo_name = None
             if repo in response['Items'][0]['repos']:
                 db_repo_name = repo
 
             if db_repo_name is None:
-                self.table.update_item(
+                self.room_table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #repo.#reponame= :name",
                     ExpressionAttributeNames={
@@ -493,7 +502,7 @@ class dynamoapi:
                     }
                 )
         else:
-            self.table.update_item(
+            self.room_table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #repo.#reponame",
                 ExpressionAttributeNames={
@@ -504,7 +513,7 @@ class dynamoapi:
 
     def get_notif_users(self):
         self.get_dynamo()
-        all_rooms = self.table.scan()
+        all_rooms = self.room_table.scan()
 
         return all_rooms
 
@@ -512,7 +521,7 @@ class dynamoapi:
         self.get_dynamo()
         name = self.clean_username(name)
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         if name in response['Items'][0]['users']:
             return response['Items'][0]['users'][name]
@@ -525,14 +534,14 @@ class dynamoapi:
 
         first_name = full_name.split(" ")[0].lower()
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         dup_status = False
         for user in response['Items'][0]['users']:
             dynamo_user = response['Items'][0]['users'][user]['first_name']
             if dynamo_user == first_name:
                 dup_status = True
-                self.table.update_item(
+                self.room_table.update_item(
                     Key={'room_id': room_id},
                     UpdateExpression="set #user.#username.#dup= :name",
                     ExpressionAttributeNames={
@@ -543,7 +552,7 @@ class dynamoapi:
                     ExpressionAttributeValues={':name': dup_status}
                 )
 
-        self.table.update_item(
+        self.room_table.update_item(
             Key={'room_id': room_id},
             UpdateExpression="set #user.#username= :name",
             ExpressionAttributeNames={
@@ -566,11 +575,11 @@ class dynamoapi:
         name = self.clean_username(name)
 
         for room in room_id:
-            response = self.table.query(KeyConditionExpression=Key('room_id').eq(room))
+            response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room))
 
             if name in response['Items'][0]['users']:
                 if person_id in response['Items'][0]['users'][name]['person_id']:
-                    self.table.update_item(
+                    self.room_table.update_item(
                         Key={'room_id': room},
                         UpdateExpression="set #user.#username.#reminders = :name",
                         ExpressionAttributeNames={
@@ -588,10 +597,10 @@ class dynamoapi:
         self.get_dynamo()
         name = self.clean_username(name)
 
-        response = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
 
         if name in response['Items'][0]['users']:
-            self.table.update_item(
+            self.room_table.update_item(
                 Key={'room_id': room_id},
                 UpdateExpression="REMOVE #user.#username",
                 ExpressionAttributeNames={
@@ -600,7 +609,7 @@ class dynamoapi:
                 }
             )
 
-            post_delete_user_query = self.table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+            post_delete_user_query = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
             duplicate_named_users = []
 
             user = ''
@@ -617,7 +626,7 @@ class dynamoapi:
             # Only Set dup status to false if duplicate_named_users is 1
             if len(duplicate_named_users) == 1:
                 for user in duplicate_named_users:
-                    self.table.update_item(
+                    self.room_table.update_item(
                         Key={'room_id': room_id},
                         UpdateExpression="set #user.#username.#dup= :name",
                         ExpressionAttributeNames={
