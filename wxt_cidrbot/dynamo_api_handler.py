@@ -367,7 +367,7 @@ class dynamoapi:
 
         :return: dictionary, all the repos attached with their respective token
         """
-        if isinstance(repo_names, list):
+        if not isinstance(repo_names, list):
             repo_names = [repo_names]
         room_data = self.get_room_data(room_id)
         self.get_dynamo_installation_table()
