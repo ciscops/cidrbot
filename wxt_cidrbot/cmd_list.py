@@ -97,6 +97,7 @@ class cmdlist:
         name_list = []
         for user in user_dict:
             name_list.append(user)
+            git_name =str(user_dict[user]['git_name'])
 
             if user_dict[user]['dup_status'] is False:
                 first_name = str(user_dict[user]['first_name']).lower()
@@ -106,15 +107,17 @@ class cmdlist:
                 name_list.append(first_name_lower + str(user)[1].lower())
                 name_list.append(first_name_lower)
                 first_name = str(first_name_lower + str(user)[1].lower())
+                self.logging.debug("git_name 1: %s", git_name)
                 self.first_name_dups.update({user: {'first_name': first_name_lower}})
                 self.username_email_dict.update({
                     first_name_lower: {
+                        'git_name': git_name,
                         'login': user,
                         'duplicate': user_dict[user]['dup_status']
                     }
                 })
 
-            self.username_email_dict.update({first_name: {'login': user, 'duplicate': user_dict[user]['dup_status']}})
+            self.username_email_dict.update({first_name: {"git_name": git_name,'login': user, 'duplicate': user_dict[user]['dup_status']}})
 
         name_list.append('me')
 
@@ -388,7 +391,7 @@ class cmdlist:
             return error_message_repo_issues
 
         if git_name == "me":
-            git_name = self.user_email
+            git_name = self.username_email_dict[user]['login']
             first_name = self.user_email
             for user in self.username_email_dict:
                 if self.username_email_dict[user]['login'] == git_name:
@@ -398,7 +401,7 @@ class cmdlist:
             for user in self.username_email_dict:
                 if user == git_name:
                     first_name = user[0].upper() + user[1:]
-                    git_name = self.username_email_dict[user]['login']
+                    git_name = self.username_email_dict[user]['git_name']
                 elif self.username_email_dict[user]['login'] == git_name:
                     first_name = user[0].upper() + user[1:]
 
@@ -463,7 +466,7 @@ class cmdlist:
             if status:
                 assignee = issue_dict[issue]['assigned'].split(", ")
                 for name in assignee:
-                    if name == git_name_target:
+                    if name.lower() == git_name_target.lower():
                         edit_message += f"- Issue located: {issue_name} \n"
                         if issues_found < 8:
                             self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
