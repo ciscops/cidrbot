@@ -56,6 +56,28 @@ class cidrbot:
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
 
+    def send_wbx_messages(self, msgs_to_be_sent, room_id, message_id, pt_id, request_type):
+        """
+        sends all messages in a list and can either sent the message(s) as an edit or new reply
+
+        :param msgs_to_be_sent: list, the messages to be sent
+        :param room_id: string, the id for the webex room
+        :param message_id: string, id for the webex message bot will edit
+        :param pt_id: string, id of webex parent message bot responds to
+        :param request_type: string, whether request is daily update or to edit a message
+
+        return: bool, True if messages sent
+        """
+
+        if request_type == 'daily_message':
+            self.send_wbx_msg(room_id, msgs_to_be_sent.pop(0), pt_id)
+        elif request_type == 'edit_message':
+            self.webex.edit_message(message_id, msgs_to_be_sent.pop(0), room_id)
+        for msg in msgs_to_be_sent:
+            self.send_wbx_msg(room_id, msg, pt_id)
+
+        return True
+
     def send_directwbx_msg(self, person_id, message):
         self.Api.messages.create(toPersonId=person_id, markdown=message)
 
@@ -194,11 +216,14 @@ class cidrbot:
         message_first_part = ""
         msgs_to_be_sent = []
 
+        issue_title = split_message.pop(0)
+        message_first_part += issue_title
+
         for repo in split_message:
+            self.logging.debug("REPO: %s", str(repo))
             self.logging.debug("Length of repo %s", len(repo))
             if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
-                if '**All Issues:**' not in repo:
-                    message_first_part += split_keyword
+                message_first_part += split_keyword
                 message_first_part += repo
                 continue
 
@@ -215,7 +240,7 @@ class cidrbot:
                 msgs_to_be_sent.append(message_first_part)
                 message_first_part += split_keyword + repo
                 continue
-            elif is_not_able_to_append:
+            if is_not_able_to_append:
                 msgs_to_be_sent.append(message_first_part)
                 message_first_part = ""
 
@@ -229,14 +254,7 @@ class cidrbot:
                 message_first_part = split_keyword + repo_name + " (continued)" + "\n" + repo_part
         msgs_to_be_sent.append(message_first_part)
 
-        if request_type == 'daily_message':
-            self.send_wbx_msg(room_id, msgs_to_be_sent.pop(0), pt_id)
-        elif request_type == 'edit_message':
-            self.webex.edit_message(message_id, msgs_to_be_sent.pop(0), room_id)
-        for msg in msgs_to_be_sent:
-            self.send_wbx_msg(room_id, msg, pt_id)
-
-        return True
+        return self.send_wbx_messages(msgs_to_be_sent, room_id, message_id, pt_id, request_type)
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id, pt_id):
