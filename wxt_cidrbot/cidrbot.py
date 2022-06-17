@@ -190,41 +190,41 @@ class cidrbot:
         if len(message) < self.WEBEX_MESSAGE_CHAR_LIMIT:
             return False
 
-        if split_keyword in message:
-            split_message = message.split(split_keyword)
-            message_first_part = ""
-            msgs_to_be_sent = []
+        split_message = message.split(split_keyword)
+        message_first_part = ""
+        msgs_to_be_sent = []
 
-            for repo in split_message:
-                self.logging.debug("Length of repo %s", len(repo))
-                if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
-                    if '**All Issues:**' not in repo:
-                        message_first_part += split_keyword
-                    message_first_part += repo
-                else:
-                    split_repo = repo.split("\n")
-                    repo_name = split_repo.pop(0)
-                    #check to see if cannot append at least n lines to last message
-                    if not (
-                        len(message_first_part) + len("".join(split_repo[:num_needed_repo_lines])) <
-                        self.WEBEX_MESSAGE_CHAR_LIMIT
-                    ):
+        for repo in split_message:
+            self.logging.debug("Length of repo %s", len(repo))
+            if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                if '**All Issues:**' not in repo:
+                    message_first_part += split_keyword
+                message_first_part += repo
+            else:
+                split_repo = repo.split("\n")
+                repo_name = split_repo.pop(0)
+                #check to see if cannot append at least n lines to last message
+                if len(message_first_part) + len("".join(split_repo[:num_needed_repo_lines])) >= self.WEBEX_MESSAGE_CHAR_LIMIT:
+                    msgs_to_be_sent.append(message_first_part)
+                    #check see if entire repo fit in one message so don't waste memory and time splitting and repiecing
+                    if len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                        message_first_part += split_keyword + repo
+                        continue
+                    message_first_part = ""
+
+                message_first_part += split_keyword + repo_name
+                for repo_part in split_repo:
+                    if len(message_first_part) + len(repo_part) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                        message_first_part += "\n" + repo_part
+                    else:
                         msgs_to_be_sent.append(message_first_part)
-                        message_first_part = ""
-
-                    message_first_part += split_keyword + repo_name
-                    for repo_part in split_repo:
-                        if len(message_first_part) + len(repo_part) < self.WEBEX_MESSAGE_CHAR_LIMIT:
-                            message_first_part += "\n" + repo_part
-                        else:
-                            msgs_to_be_sent.append(message_first_part)
-                            #if end message, don't do split_keyword part
-                            message_first_part = split_keyword + repo_name + " (continued)" + "\n" + repo_part
-            msgs_to_be_sent.append(message_first_part)
+                        #if end message, don't do split_keyword part
+                        message_first_part = split_keyword + repo_name + " (continued)" + "\n" + repo_part
+        msgs_to_be_sent.append(message_first_part)
 
         if request_type == 'daily_message':
             self.send_wbx_msg(room_id, msgs_to_be_sent.pop(0), pt_id)
-        if request_type == 'edit_message':
+        elif request_type == 'edit_message':
             self.webex.edit_message(message_id, msgs_to_be_sent.pop(0), room_id)
         for msg in msgs_to_be_sent:
             self.send_wbx_msg(room_id, msg, pt_id)
