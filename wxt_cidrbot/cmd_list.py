@@ -92,12 +92,12 @@ class cmdlist:
             repo_search.append(i.lower())
 
         user_dict = self.dynamo.user_dict(room_id)
-        #self.logging.debug("User dict: " + str(user_dict))
+        #self.logging.debug("User dict: %s", str(user_dict))
 
         name_list = []
         for user in user_dict:
             name_list.append(user)
-            git_name =str(user_dict[user]['git_name'])
+            git_name = str(user_dict[user]['git_name'])
 
             if user_dict[user]['dup_status'] is False:
                 first_name = str(user_dict[user]['first_name']).lower()
@@ -117,7 +117,13 @@ class cmdlist:
                     }
                 })
 
-            self.username_email_dict.update({first_name: {"git_name": git_name,'login': user, 'duplicate': user_dict[user]['dup_status']}})
+            self.username_email_dict.update({
+                first_name: {
+                    "git_name": git_name,
+                    'login': user,
+                    'duplicate': user_dict[user]['dup_status']
+                }
+            })
 
         name_list.append('me')
 
@@ -405,6 +411,7 @@ class cmdlist:
                     git_name = self.username_email_dict[user]['git_name']
                 elif self.username_email_dict[user]['login'] == git_name:
                     first_name = user[0].upper() + user[1:]
+                    git_name = self.username_email_dict[user]['git_name']
 
         if re.match(r'^[a-zA-Z-0-9._]+$', git_name):
             if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):

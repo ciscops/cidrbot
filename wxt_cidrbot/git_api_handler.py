@@ -407,7 +407,7 @@ class githandler:
             issue_json = issue.raw_data
 
         assignee = self.get_issue_info(issue_json, issue_type)
-        self.logging.debug("ASSIGNEE: %s",str(assignee))
+        self.logging.debug("ASSIGNEE: %s", str(assignee))
         if assignee.get('user') is not None:
             if search_name.lower() in str(assignee.get('user')).lower():
                 return True
