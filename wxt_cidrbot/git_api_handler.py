@@ -261,7 +261,7 @@ class githandler:
         json_str = user.json()
 
         if "login" in json_str:
-            if json_str['login'] == name:
+            if json_str['login'].lower() == name.lower():
                 return True
         return False
 
@@ -407,8 +407,9 @@ class githandler:
             issue_json = issue.raw_data
 
         assignee = self.get_issue_info(issue_json, issue_type)
+        self.logging.debug("ASSIGNEE: %s", str(assignee))
         if assignee.get('user') is not None:
-            if search_name in assignee.get('user'):
+            if search_name.lower() in str(assignee.get('user')).lower():
                 return True
         return False
 
