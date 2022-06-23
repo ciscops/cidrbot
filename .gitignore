@@ -137,3 +137,4 @@ lambda_function.py
 lambda-packages*
 .*.sw?
 .vscode/
+*.zip
