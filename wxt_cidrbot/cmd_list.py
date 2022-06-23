@@ -399,16 +399,13 @@ class cmdlist:
         if git_name == "me":
             git_name = self.user_email
             first_name = self.user_email
-            for user in self.username_email_dict:
-                if self.username_email_dict[user]['login'] == git_name:
-                    git_name = self.username_email_dict[user]['git_name']
-                    first_name = user[0].upper() + user[1:]
         else:
             first_name = git_name
-            for user in self.username_email_dict:
-                if git_name in (user, self.username_email_dict[user]['login']):
-                    first_name = user[0].upper() + user[1:]
-                    git_name = self.username_email_dict[user]['git_name']
+
+        for user in self.username_email_dict:
+            if git_name in (user, self.username_email_dict[user]['login']):
+                first_name = user[0].upper() + user[1:]
+                git_name = self.username_email_dict[user]['git_name']
 
         if re.match(r'^[a-zA-Z-0-9._]+$', git_name):
             if re.match(r'^[a-zA-Z-0-9._]+/[a-zA-Z-0-9._]+$', repo):
