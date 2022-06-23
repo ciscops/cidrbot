@@ -406,10 +406,7 @@ class cmdlist:
         else:
             first_name = git_name
             for user in self.username_email_dict:
-                if user == git_name:
-                    first_name = user[0].upper() + user[1:]
-                    git_name = self.username_email_dict[user]['git_name']
-                elif self.username_email_dict[user]['login'] == git_name:
+                if git_name in (user, self.username_email_dict[user]['login']):
                     first_name = user[0].upper() + user[1:]
                     git_name = self.username_email_dict[user]['git_name']
 
