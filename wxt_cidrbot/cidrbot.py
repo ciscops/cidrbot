@@ -51,10 +51,32 @@ class cidrbot:
         self.webex = webex_edit_message.webex_message()
         self.room_handle = cidrbot_room_setup.room_setup()
         self.roomID = ""
-        self.WEBEX_MESSAGE_CHAR_LIMIT = 4800
+        self.WEBEX_MESSAGE_CHAR_LIMIT = 4700
 
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
+
+    def send_wbx_messages(self, msgs_to_be_sent, room_id, message_id, pt_id, request_type):
+        """
+        sends all messages in a list and can either sent the message(s) as an edit or new reply
+
+        :param msgs_to_be_sent: list, the messages to be sent
+        :param room_id: string, the id for the webex room
+        :param message_id: string, id for the webex message bot will edit
+        :param pt_id: string, id of webex parent message bot responds to
+        :param request_type: string, whether request is daily update or to edit a message
+
+        return: bool, True if messages sent
+        """
+
+        if request_type == 'daily_message':
+            self.send_wbx_msg(room_id, msgs_to_be_sent.pop(0), pt_id)
+        elif request_type == 'edit_message':
+            self.webex.edit_message(message_id, msgs_to_be_sent.pop(0), room_id)
+        for msg in msgs_to_be_sent:
+            self.send_wbx_msg(room_id, msg, pt_id)
+
+        return True
 
     def send_directwbx_msg(self, person_id, message):
         self.Api.messages.create(toPersonId=person_id, markdown=message)
@@ -172,32 +194,67 @@ class cidrbot:
                 self.message_event(json_string, event_type, webex_msg_sender)
 
     def check_message_overflow(self, message, room_id, message_id, pt_id, request_type):
+        """
+        If message is over webex char limit, it separates the message into chunks that fit the limit
+
+        :param message: string, the message to be evaluated
+        :param room_id: string, the id for the webex room
+        :param message_id: string, id for the webex message bot will edit
+        :param pt_id: string, id of webex parent message bot responds to
+        :param request_type: string, whether request is daily update or to edit a message
+
+        return: bool, if message under limit - False; if over limit - True
+        """
         split_keyword = 'Repo:'
+        #If message overflow with an entire repo, how many lines should be able to be appended to last message before just making new message
+        num_needed_repo_lines = 3
 
         if len(message) < self.WEBEX_MESSAGE_CHAR_LIMIT:
             return False
 
-        if split_keyword in message:
-            split_message = message.split(split_keyword)
-            message_first_part = ""
-            remainder_message = ""
-            for repo in split_message:
-                self.logging.debug("Length of repo %s", len(repo))
-                if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
-                    if '**All Issues:**' not in repo:
-                        message_first_part += split_keyword
-                    message_first_part += repo
-                elif len(remainder_message) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
-                    remainder_message += "Repo:" + repo
-                else:
-                    remainder_message = "One repo has too many issues and exceeds the webex message limit."
+        split_message = message.split(split_keyword)
+        message_first_part = ""
+        msgs_to_be_sent = []
 
-        if request_type == 'daily_message':
-            self.send_wbx_msg(room_id, message_first_part, pt_id)
-        if request_type == 'edit_message':
-            self.webex.edit_message(message_id, message_first_part, room_id)
-        self.send_wbx_msg(room_id, remainder_message, pt_id)
-        return True
+        issue_title = split_message.pop(0)
+        message_first_part += issue_title
+
+        for repo in split_message:
+            self.logging.debug("REPO: %s", str(repo))
+            self.logging.debug("Length of repo %s", len(repo))
+            if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                message_first_part += split_keyword
+                message_first_part += repo
+                continue
+
+            split_repo = repo.split("\n")
+            repo_name = split_repo.pop(0)
+
+            #check to see if cannot append at least n lines to last message
+            is_not_able_to_append = len(message_first_part) + len(
+                "".join(split_repo[:num_needed_repo_lines])
+            ) >= self.WEBEX_MESSAGE_CHAR_LIMIT
+
+            #check see if entire repo fit in one message so don't waste memory and time splitting and repiecing
+            if is_not_able_to_append and len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                msgs_to_be_sent.append(message_first_part)
+                message_first_part += split_keyword + repo
+                continue
+            if is_not_able_to_append:
+                msgs_to_be_sent.append(message_first_part)
+                message_first_part = ""
+
+            message_first_part += split_keyword + repo_name
+            for repo_part in split_repo:
+                if len(message_first_part) + len(repo_part) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                    message_first_part += "\n" + repo_part
+                    continue
+                msgs_to_be_sent.append(message_first_part)
+                #if end message, don't do split_keyword part
+                message_first_part = split_keyword + repo_name + " (continued)" + "\n" + repo_part
+        msgs_to_be_sent.append(message_first_part)
+
+        return self.send_wbx_messages(msgs_to_be_sent, room_id, message_id, pt_id, request_type)
 
     # Webex sdk does not support editing a message, so the rest api is directly called
     def edit_wbx_message(self, message_id, message, room_id, pt_id):
