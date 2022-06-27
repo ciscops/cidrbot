@@ -415,7 +415,7 @@ class gitwebhook:
 
         if approved_reviews >= required_approvals:
             message = (
-                f"""Pull request {pull_request_hyperlink} has been approved by {approved_reviewers}: {review_message}\n"""
+                f"""Pull request {pull_request_hyperlink} has been approved in {repo_name} by {approved_reviewers}: {review_message}\n"""
                 f"""- {reviews_mark} Has Required Approvals\n- {check_runs_mark} Passes CI Checks{skipped_checks_msg}"""
                 f"""\n- {mergeable_mark} Is Mergeable"""
             )
