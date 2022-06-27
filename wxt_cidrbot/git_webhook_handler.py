@@ -62,7 +62,6 @@ class gitwebhook:
             event_info = self.check_installation(installation_id)
 
             room_id = event_info[0]['room_id']
-            person_id = event_info[0]['person_id']
             message_add_repo = ""
             message_remove_repo = ""
 
