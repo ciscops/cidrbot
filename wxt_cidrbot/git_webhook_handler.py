@@ -56,6 +56,7 @@ class gitwebhook:
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
+        github_name = json_string['sender']['login']
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
@@ -90,7 +91,12 @@ class gitwebhook:
             if len(message_remove_repo) > 0:
                 message += f"**Removed:**\n" + message_remove_repo
 
-            self.Api.messages.create(toPersonId=person_id, markdown=message)
+            person_id = self.dynamo.get_webex_username(github_name, room_id)
+
+            if len(person_id) > 0:
+                self.Api.messages.create(toPersonId=person_id, markdown=message)
+            else:
+                self.Api.messages.create(roomId=room_id, markdown=message)
 
         elif event_action == 'deleted':
             removed_repos = self.delete_installation(installation_id)
