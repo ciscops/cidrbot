@@ -94,7 +94,7 @@ class dynamoapi:
         if self.dynamodb is None:
             self.dynamodb = boto3.resource('dynamodb')
         if self.auth_table is None:
-            self.auth_table = self.dynamodb.Table([self.db_auth_name])
+            self.auth_table = self.dynamodb.Table(self.db_auth_name)
 
     def get_boto3_session(self):
         """
@@ -210,6 +210,16 @@ class dynamoapi:
             return f"Successfully added triage user {user_name}"
         except Exception:
             return f"Cannot add user {user_name}"
+
+    def get_webex_username(self, github_name: str, room_id: str) -> str:
+        """obtains the webex username from the user's github username"""
+        self.get_dynamo()
+        response = self.room_table.query(KeyConditionExpression=Key('room_id').eq(room_id))
+
+        for user in response['Items'][0]['users']:
+            if response['Items'][0]['users'][user]['git_name'].lower() == github_name.lower():
+                return response['Items'][0]['users'][user]['person_id']
+        return ""
 
     def update_github_username(self, target_name, alias_name, room_id):
         self.get_dynamo()

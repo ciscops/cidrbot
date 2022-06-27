@@ -207,6 +207,7 @@ class gitauth:
                         )
                         self.send_webex_message(post_direct_message)
                         self.send_webex_message(post_message)
+                        self.logging.debug("Room message: %s", str(post_message))
 
                         self.logging.debug("Auth cycle completed, redirecting user")
                         return None
