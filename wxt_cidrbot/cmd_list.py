@@ -36,6 +36,12 @@ class cmdlist:
             logging.error("Environment variable WEBEX_BOT_NAME must be set")
             sys.exit(1)
 
+        if 'GITHUB_BOT_NAME' in os.environ:
+            self.git_bot_name = os.getenv("GITHUB_BOT_NAME")
+        else:
+            logging.error("Environment variable GITHUB_BOT_NAME must be set")
+            sys.exit(1)
+
         # Init sibling py files and used global vars
         self.git_handle = git_api_handler.githandler()
         self.dynamo = dynamo_api_handler.dynamoapi()
@@ -80,7 +86,7 @@ class cmdlist:
 
         words_list = [
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
-            'unassign', 'info', 'test', 'triage', 'update', 'name'
+            'unassign', 'info', 'test', 'triage', 'update', 'name', 'configure'
         ]
         help_words_list = ['assigning', 'issues', 'repos', 'reminders', 'syntax', 'triage', 'approvals']
 
@@ -206,6 +212,9 @@ class cmdlist:
                 return self.help_menu(help_word)
         if self.similar(sim_text, "help") > 0.8:
             return self.help_menu("all")
+        if self.similar(sim_text, 'configure repos') > 0.7:
+            self.send_configure_msg(self.user_person_id)
+            return "Check direct messages to finish configuring repos"
 
         if 'change required approvals' in text:
             for user in self.webex_mod_status:
@@ -220,7 +229,7 @@ class cmdlist:
             for user in self.webex_mod_status:
                 if user.isModerator:
                     return self.send_update_msg(room_id, "update name", text_split[3], text_split, pt_id)
-        if "manage repos" in text:
+        if "auth repos" in text:
             if event_type == "Message":
                 #doesn't need to be webex_mod_status - confusing name, change to "webex user"
                 for user in self.webex_mod_status:
@@ -554,7 +563,8 @@ class cmdlist:
         )
         repos_help = (
             f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
-            "- **@Cidrbot manage repos** - only for moderators in chat room\n" + "\n"
+            "- **@Cidrbot auth repos** - authorize an installation\n" +
+            "- **@Cidrbot configure repos** - add/remove repos for an active installation\n" + "\n"
         )
 
         triage_help = (
@@ -615,3 +625,11 @@ class cmdlist:
             hyperlink = f'<a href="{repo_url}">{repo}</a>\n'
             message += "- " + hyperlink + " \n"
         return message
+
+    def send_configure_msg(self, user_id: str):
+        self.Api = WebexTeamsAPI()
+        config_url = f"https://github.com/apps/{self.git_bot_name}/installations/new"
+        hyperlink = f'<a href="{config_url}">link</a>'
+
+        message = f"Use this {hyperlink} to configure your repos"
+        self.Api.messages.create(toPersonId=user_id, markdown=message)
