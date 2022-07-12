@@ -502,10 +502,10 @@ class gitwebhook:
 
         return {'approved_reviews': approved_reviews, 'approved_reviewers': approved_reviewers}
 
-    def get_code_owners_count(reviewers: list) -> int:
+    def get_code_owners_count(self, reviewers: tuple) -> int:
         """returns the number of code owners"""
         num_code_owners = 0
-            
+
         for reviewer in reviewers:
             for _ in reviewer:
                 num_code_owners += 1
