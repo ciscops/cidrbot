@@ -155,7 +155,6 @@ class gitwebhook:
         issue_url = json_string[query_key]['html_url']
         issue_user = json_string[query_key]['user']['login']
         repo_name = json_string['repository']['full_name']
-        #repo_name = repo_name.lower()
         repo_url = json_string['repository']['html_url']
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
@@ -171,11 +170,7 @@ class gitwebhook:
             self.logging.debug("The issue is a pull request")
             reviewers = issue.as_pull_request().get_review_requests()
 
-            num_code_owners = 0
-            for reviewer in reviewers:
-                for r in reviewer:
-                    self.logging.debug("Debugging r so it actually has a use and passes make pylint %s", r)
-                    num_code_owners += 1
+            num_code_owners = self.get_code_owners_count(reviewers)
 
             self.logging.debug("Number of code owners %s", num_code_owners)
             if num_code_owners > 0:
@@ -506,3 +501,13 @@ class gitwebhook:
         approved_reviewers = approved_reviewers[:-2]
 
         return {'approved_reviews': approved_reviews, 'approved_reviewers': approved_reviewers}
+
+    def get_code_owners_count(reviewers: list) -> int:
+        """returns the number of code owners"""
+        num_code_owners = 0
+            
+        for reviewer in reviewers:
+            for _ in reviewer:
+                num_code_owners += 1
+
+        return num_code_owners
