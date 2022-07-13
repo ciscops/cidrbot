@@ -130,9 +130,10 @@ class gitwebhook:
         issue_type = "Pull request"
         query_key = "pull_request"
 
-        pull_request_action_msg = "created in"
         if converted_from_draft:
             pull_request_action_msg = "has been converted from draft in"
+        else:
+            pull_request_action_msg = "created in"
 
         # Issues and prs have different dict structures
         if x_event_type == 'issues':
