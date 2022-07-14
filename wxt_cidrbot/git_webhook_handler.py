@@ -53,9 +53,11 @@ class gitwebhook:
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
+        json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
+        is_draft = bool(json_string['pull_request']['draft'])
         github_name = json_string['sender']['login']
 
         if event_action in ('added', 'removed'):
@@ -107,12 +109,14 @@ class gitwebhook:
                 self.Api.messages.create(self.room_id, markdown=message_uninstall)
 
         elif x_event_type in ('issues', 'pull_request'):
-            if event_action == 'opened':
+            if event_action == 'opened' and not is_draft:
                 self.triage_issue(installation_id, json_string, x_event_type)
             elif event_action == 'closed' and x_event_type == 'pull_request':
                 self.send_merged_message(installation_id, json_string)
             elif event_action == 'review_requested':
                 self.send_review_message(installation_id, json_string, False, None)
+            elif event_action == 'ready_for_review':
+                self.triage_issue(installation_id, json_string, x_event_type, converted_from_draft=True)
 
         elif x_event_type == 'pull_request_review':
             state = json_string['review']['state']
@@ -121,10 +125,15 @@ class gitwebhook:
             if state == 'approved':
                 self.send_approved_message(installation_id, json_string)
 
-    def triage_issue(self, installation_id, json_string, x_event_type):
+    def triage_issue(self, installation_id, json_string, x_event_type, converted_from_draft=False):
         event_info = self.check_installation(installation_id)
         issue_type = "Pull request"
         query_key = "pull_request"
+
+        if converted_from_draft:
+            pull_request_action_msg = "has been converted from draft in"
+        else:
+            pull_request_action_msg = "created in"
 
         # Issues and prs have different dict structures
         if x_event_type == 'issues':
@@ -151,7 +160,7 @@ class gitwebhook:
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-        message = f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. Performing automated triage:"
+        message = f"{issue_type} {hyperlink_format} {pull_request_action_msg} {hyperlink_format_repo} by {issue_user}. Performing automated triage:"
 
         token_dict = self.dynamo.get_repo_keys(room_id, repo_name)
         token = token_dict[repo_name]
@@ -162,11 +171,7 @@ class gitwebhook:
             self.logging.debug("The issue is a pull request")
             reviewers = issue.as_pull_request().get_review_requests()
 
-            num_code_owners = 0
-            for reviewer in reviewers:
-                for r in reviewer:
-                    self.logging.debug("Debugging r so it actually has a use and passes make pylint %s", r)
-                    num_code_owners += 1
+            num_code_owners = self.get_code_owners_count(reviewers)
 
             self.logging.debug("Number of code owners %s", num_code_owners)
             if num_code_owners > 0:
@@ -179,8 +184,8 @@ class gitwebhook:
         if len(triage_list) < 1:
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = (
-                f"{issue_type} {hyperlink_format} created in {hyperlink_format_repo} by {issue_user}. \n" +
-                f"- To assign this issue, use the following \n" +
+                f"{issue_type} {hyperlink_format} {pull_request_action_msg} {hyperlink_format_repo} by {issue_user}. \n"
+                + f"- To assign this issue, use the following \n" +
                 f"- **@Cidrbot assign {repo_name} {issue_num} me|Git username|Webex firstname**"
             )
             self.Api.messages.create(room_id, markdown=empty_triage_message)
@@ -497,3 +502,13 @@ class gitwebhook:
         approved_reviewers = approved_reviewers[:-2]
 
         return {'approved_reviews': approved_reviews, 'approved_reviewers': approved_reviewers}
+
+    def get_code_owners_count(self, reviewers: tuple) -> int:
+        """returns the number of code owners"""
+        num_code_owners = 0
+
+        for reviewer in reviewers:
+            for _ in reviewer:
+                num_code_owners += 1
+
+        return num_code_owners
