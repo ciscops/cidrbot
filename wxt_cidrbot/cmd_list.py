@@ -516,7 +516,7 @@ class cmdlist:
 
             if not status:
                 continue
-            
+
             assignee = assigned_issues_dict[issue]['assigned']
             assignee_list = assignee.split(', ')
             for assigned_user in assignee_list:
