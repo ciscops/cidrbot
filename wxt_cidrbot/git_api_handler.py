@@ -125,7 +125,17 @@ class githandler:
         self.logging.debug(issue)
         issue_color_code = self.get_issue_color_code(issue)
 
-        text = f"{issue_color_code} &nbsp; {issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
+        try:
+            is_draft = issue['draft']
+        except:
+            is_draft = False
+
+        if is_draft:
+            draft_txt = "(Draft) "
+        else:
+            draft_txt = ""
+
+        text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
         assigned_user = issue_info.get('user')
