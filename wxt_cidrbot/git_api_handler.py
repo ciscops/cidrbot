@@ -127,7 +127,7 @@ class githandler:
 
         try:
             is_draft = issue['draft']
-        except:
+        except KeyError:
             is_draft = False
 
         if is_draft:
