@@ -155,6 +155,10 @@ class githandler:
         number = issue['number']
         assigned_status = status[0]
         assigned = status[1]
+        try:
+            is_draft = issue['draft']
+        except KeyError:
+            is_draft = False
 
         html_color_code = self.get_issue_color_code(issue)
 
@@ -166,7 +170,8 @@ class githandler:
                 'url': issue_url,
                 'type': issue_type,
                 'number': number,
-                'color_code': html_color_code
+                'color_code': html_color_code,
+                'is_draft': is_draft
             }
         })
         return issue_dict

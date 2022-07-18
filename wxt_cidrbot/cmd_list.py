@@ -485,11 +485,17 @@ class cmdlist:
                         issue_type = issue_dict[issue]['type']
                         issue_num = issue_dict[issue]['number']
                         issue_color_code = issue_dict[issue]['color_code']
+                        is_draft = issue_dict[issue]['is_draft']
+
+                        if is_draft:
+                            draft_txt = "(Draft) "
+                        else:
+                            draft_txt = ""
 
                         issue_type += " #" + str(issue_num)
                         name_format = issue_name
                         hyperlink_format = f'<a href="{url}">{name_format}</a>'
-                        text = f"{issue_color_code} &nbsp; {issue_type} in {repo_name}: {hyperlink_format}"
+                        text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
 
                         message += text + "\n"
                         issues_found += 1
@@ -515,10 +521,16 @@ class cmdlist:
                         issue_type = assigned_issues_dict[issue]['type']
                         issue_num = assigned_issues_dict[issue]['number']
                         issue_color_code = assigned_issues_dict[issue]['color_code']
+                        is_draft = assigned_issues_dict[issue]['is_draft']
+
+                        if is_draft:
+                            draft_txt = "(Draft) "
+                        else:
+                            draft_txt = ""
 
                         name_format = issue_name + " #" + str(issue_num)
                         hyperlink_format = f'<a href="{url}">{name_format}</a>'
-                        text = f"{issue_color_code} &nbsp; {issue_type} in {repo_name}: {hyperlink_format}"
+                        text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
 
                         message += text + '\n'
                         issues_found += 1
