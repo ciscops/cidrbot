@@ -490,10 +490,9 @@ class cmdlist:
                     issue_color_code = issue_dict[issue]['color_code']
                     is_draft = issue_dict[issue]['is_draft']
 
+                    draft_txt = ""
                     if is_draft:
                         draft_txt = "(Draft) "
-                    else:
-                        draft_txt = ""
 
                     issue_type += " #" + str(issue_num)
                     name_format = issue_name
@@ -529,10 +528,9 @@ class cmdlist:
                     issue_color_code = assigned_issues_dict[issue]['color_code']
                     is_draft = assigned_issues_dict[issue]['is_draft']
 
+                    draft_txt = ""
                     if is_draft:
                         draft_txt = "(Draft) "
-                    else:
-                        draft_txt = ""
 
                     name_format = issue_name + " #" + str(issue_num)
                     hyperlink_format = f'<a href="{url}">{name_format}</a>'
