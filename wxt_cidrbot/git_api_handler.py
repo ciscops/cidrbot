@@ -125,15 +125,13 @@ class githandler:
         self.logging.debug(issue)
         issue_color_code = self.get_issue_color_code(issue)
 
-        try:
+        is_draft = False
+        if 'draft' in issue:
             is_draft = issue['draft']
-        except:
-            is_draft = False
 
+        draft_txt = ""
         if is_draft:
             draft_txt = "(Draft) "
-        else:
-            draft_txt = ""
 
         text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
@@ -156,6 +154,10 @@ class githandler:
         assigned_status = status[0]
         assigned = status[1]
 
+        is_draft = False
+        if 'draft' in issue:
+            is_draft = issue['draft']
+
         html_color_code = self.get_issue_color_code(issue)
 
         issue_dict.update({
@@ -166,7 +168,8 @@ class githandler:
                 'url': issue_url,
                 'type': issue_type,
                 'number': number,
-                'color_code': html_color_code
+                'color_code': html_color_code,
+                'is_draft': is_draft
             }
         })
         return issue_dict
