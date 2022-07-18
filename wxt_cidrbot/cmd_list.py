@@ -474,31 +474,34 @@ class cmdlist:
             repo_name = issue.split(', ', 1)[0]
             issue_name = issue_dict[issue]['name']
             status = issue_dict[issue]['assigned_status']
-            if status:
-                assignee = issue_dict[issue]['assigned'].split(", ")
-                for name in assignee:
-                    if name.lower() == git_name_target.lower():
-                        edit_message += f"- Issue located: {issue_name} \n"
-                        if issues_found < 8:
-                            self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
-                        url = issue_dict[issue]['url']
-                        issue_type = issue_dict[issue]['type']
-                        issue_num = issue_dict[issue]['number']
-                        issue_color_code = issue_dict[issue]['color_code']
-                        is_draft = issue_dict[issue]['is_draft']
 
-                        if is_draft:
-                            draft_txt = "(Draft) "
-                        else:
-                            draft_txt = ""
+            if not status:
+                continue
 
-                        issue_type += " #" + str(issue_num)
-                        name_format = issue_name
-                        hyperlink_format = f'<a href="{url}">{name_format}</a>'
-                        text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
+            assignee = issue_dict[issue]['assigned'].split(", ")
+            for name in assignee:
+                if name.lower() == git_name_target.lower():
+                    edit_message += f"- Issue located: {issue_name} \n"
+                    if issues_found < 8:
+                        self.webex.edit_message(self.msg_id, edit_message, self.room_of_msg)
+                    url = issue_dict[issue]['url']
+                    issue_type = issue_dict[issue]['type']
+                    issue_num = issue_dict[issue]['number']
+                    issue_color_code = issue_dict[issue]['color_code']
+                    is_draft = issue_dict[issue]['is_draft']
 
-                        message += text + "\n"
-                        issues_found += 1
+                    if is_draft:
+                        draft_txt = "(Draft) "
+                    else:
+                        draft_txt = ""
+
+                    issue_type += " #" + str(issue_num)
+                    name_format = issue_name
+                    hyperlink_format = f'<a href="{url}">{name_format}</a>'
+                    text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
+
+                    message += text + "\n"
+                    issues_found += 1
 
         if issues_found > 0:
             return message
@@ -510,30 +513,33 @@ class cmdlist:
         message = ""
         for issue in assigned_issues_dict:
             status = assigned_issues_dict[issue]['assigned_status']
-            if status:
-                assignee = assigned_issues_dict[issue]['assigned']
-                assignee_list = assignee.split(', ')
-                for assigned_user in assignee_list:
-                    if assigned_user == user:
-                        repo_name = issue.split(', ', 1)[0]
-                        issue_name = assigned_issues_dict[issue]['name']
-                        url = assigned_issues_dict[issue]['url']
-                        issue_type = assigned_issues_dict[issue]['type']
-                        issue_num = assigned_issues_dict[issue]['number']
-                        issue_color_code = assigned_issues_dict[issue]['color_code']
-                        is_draft = assigned_issues_dict[issue]['is_draft']
 
-                        if is_draft:
-                            draft_txt = "(Draft) "
-                        else:
-                            draft_txt = ""
+            if not status:
+                continue
+            
+            assignee = assigned_issues_dict[issue]['assigned']
+            assignee_list = assignee.split(', ')
+            for assigned_user in assignee_list:
+                if assigned_user == user:
+                    repo_name = issue.split(', ', 1)[0]
+                    issue_name = assigned_issues_dict[issue]['name']
+                    url = assigned_issues_dict[issue]['url']
+                    issue_type = assigned_issues_dict[issue]['type']
+                    issue_num = assigned_issues_dict[issue]['number']
+                    issue_color_code = assigned_issues_dict[issue]['color_code']
+                    is_draft = assigned_issues_dict[issue]['is_draft']
 
-                        name_format = issue_name + " #" + str(issue_num)
-                        hyperlink_format = f'<a href="{url}">{name_format}</a>'
-                        text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
+                    if is_draft:
+                        draft_txt = "(Draft) "
+                    else:
+                        draft_txt = ""
 
-                        message += text + '\n'
-                        issues_found += 1
+                    name_format = issue_name + " #" + str(issue_num)
+                    hyperlink_format = f'<a href="{url}">{name_format}</a>'
+                    text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} in {repo_name}: {hyperlink_format}"
+
+                    message += text + '\n'
+                    issues_found += 1
 
         if issues_found > 0:
             return message
