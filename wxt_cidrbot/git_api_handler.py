@@ -133,6 +133,8 @@ class githandler:
         if is_draft:
             draft_txt = "(Draft) "
 
+        d = 'hi'
+
         text = f"{issue_color_code} &nbsp; {draft_txt}{issue_type} #{issue_num}: {hyperlink_format}"  # &nbsp; represents a space character
         issue_info = self.get_issue_info(issue, issue_type)
         issue_type = issue_info.get('issue_type')
