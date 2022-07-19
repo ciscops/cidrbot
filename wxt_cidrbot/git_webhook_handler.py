@@ -177,7 +177,7 @@ class gitwebhook:
             if num_code_owners > 0:
                 self.send_codeowners_message(
                     issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string,
-                    issue_user,pull_request_action_msg
+                    issue_user, pull_request_action_msg
                 )
                 return
 
@@ -276,7 +276,7 @@ class gitwebhook:
 
     def send_codeowners_message(
         self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string,
-        issue_user,pull_request_action_msg
+        issue_user, pull_request_action_msg
     ):
         issue = issue.as_pull_request()
         reviewers = issue.raw_data['requested_reviewers']
