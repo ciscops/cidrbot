@@ -441,7 +441,7 @@ class githandler:
         if self.check_github_user(search_name) is False:
             return f"Invalid username: {search_name}"
 
-        if name_sim == None:
+        if name_sim is None:
             name_sim = search_name
 
         notify_user_status = False
@@ -461,7 +461,15 @@ class githandler:
 
         issue_json = issue.raw_data
         hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
+        return self.create_reviewer(
+            issue_json, issue, issue_number, assign_status, hyperlink_format, name_sim, search_name, user_id,
+            notify_user_status, repo
+        )
 
+    def create_reviewer(
+        self, issue_json, issue, issue_number, assign_status, hyperlink_format, name_sim, search_name, user_id,
+        notify_user_status, repo
+    ):
         if 'pull_request' not in issue_json:
             if assign_status == "assign":
                 issue.add_to_assignees(search_name)
