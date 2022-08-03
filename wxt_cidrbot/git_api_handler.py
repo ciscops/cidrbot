@@ -427,7 +427,7 @@ class githandler:
         return False
 
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
-    def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
+    def git_assign(self, repo, issue_number, search_name, assign_status, name_sim=None):
         try:
             token_dict = self.dynamo.get_repo_keys(self.room_id, repo)
             token = token_dict[repo]
@@ -440,6 +440,9 @@ class githandler:
 
         if self.check_github_user(search_name) is False:
             return f"Invalid username: {search_name}"
+
+        if name_sim == None:
+            name_sim = search_name
 
         notify_user_status = False
 
