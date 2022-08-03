@@ -256,9 +256,14 @@ class gitwebhook:
 
                 reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
                 self.logging.debug("assigning result %s", reply_message)
-                if 'Error: **invalid user**' in reply_message or 'You created this pull request' in reply_message:
+                if 'Error: **invalid user**' in reply_message:
                     self.logging.debug("Invalid user, cannot assign %s: ", user_to_assign)
                     fail_triage_message = f"{user_to_assign} cannot be assigned because they do not have access to the repo/org, checking next user in triage list..."
+                    self.Api.messages.create(room_id, markdown=fail_triage_message, parentId=msg_edit_id)
+                    continue
+                if 'You created this pull request' in reply_message:
+                    self.logging.debug("Invalid user, pr owner %s: ", user_to_assign)
+                    fail_triage_message = f"{user_to_assign} cannot be assigned because they are the issue owner, checking next user in triage list..."
                     self.Api.messages.create(room_id, markdown=fail_triage_message, parentId=msg_edit_id)
                     continue
                 break
