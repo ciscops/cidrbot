@@ -271,13 +271,14 @@ class gitwebhook:
         if user_to_assign is None:
             no_triage_message = "Cannot find a valid triage member to assign. This is likely caused by the only triage user being the owner of this pr"
             self.Api.messages.create(room_id, markdown=no_triage_message, parentId=msg_edit_id)
-        else:
-            room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
-            if isinstance(reply_message, list):
-                if reply_message[1] is not None and reply_message[1] == 'notify user':
-                    room_message = reply_message[3]
+            return
 
-            self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
+        room_message = f"{hyperlink_format} successfully assigned to " + user_to_assign
+        if isinstance(reply_message, list):
+            if reply_message[1] is not None and reply_message[1] == 'notify user':
+                room_message = reply_message[3]
+
+        self.Api.messages.create(room_id, markdown=room_message, parentId=msg_edit_id)
 
     def send_codeowners_message(
         self, issue, room_id, hyperlink_format, hyperlink_format_repo, issue_type, installation_id, json_string,
