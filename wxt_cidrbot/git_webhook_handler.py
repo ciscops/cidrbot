@@ -63,7 +63,7 @@ class gitwebhook:
             json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
 
         if "pull_request" in json_string:
-            is_draft = bool(json_string['pull_request']['draft'])  
+            is_draft = bool(json_string['pull_request']['draft'])
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
