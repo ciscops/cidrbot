@@ -53,7 +53,8 @@ class gitwebhook:
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
-        json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
+        if "repository" in json_string:
+            json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
