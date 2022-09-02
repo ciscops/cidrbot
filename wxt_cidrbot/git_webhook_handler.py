@@ -53,13 +53,17 @@ class gitwebhook:
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
-        if "repository" in json_string:
-            json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
+        is_draft = False
         installation_id = json_string['installation']['id']
         event_action = json_string['action']
         x_event_type = event['headers']['x-github-event']
-        is_draft = bool(json_string['pull_request']['draft'])
         github_name = json_string['sender']['login']
+
+        if "repository" in json_string:
+            json_string['repository']['full_name'] = json_string['repository']['full_name'].lower()
+
+        if "pull_request" in json_string:
+            is_draft = bool(json_string['pull_request']['draft'])  
 
         if event_action in ('added', 'removed'):
             event_info = self.check_installation(installation_id)
