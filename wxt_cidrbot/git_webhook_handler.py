@@ -160,12 +160,13 @@ class gitwebhook:
         issue_title = json_string[query_key]['title']
         issue_url = json_string[query_key]['html_url']
         issue_user = json_string[query_key]['user']['login']
+        actor = json_string['sender']['login']
         repo_name = json_string['repository']['full_name']
         repo_url = json_string['repository']['html_url']
 
         hyperlink_format = f'<a href="{issue_url}">{issue_title}</a>'
         hyperlink_format_repo = f'<a href="{repo_url}">{repo_name}</a>'
-        message = f"{issue_type} {hyperlink_format} {pull_request_action_msg} {hyperlink_format_repo} by {issue_user}. Performing automated triage:"
+        message = f"{issue_type} {hyperlink_format} {pull_request_action_msg} {hyperlink_format_repo} by {actor}. Performing automated triage:"
 
         token_dict = self.dynamo.get_repo_keys(room_id, repo_name)
         token = token_dict[repo_name]

@@ -441,6 +441,9 @@ class githandler:
         if self.check_github_user(search_name) is False:
             return f"Invalid username: {search_name}"
 
+        if name_sim is None:
+            name_sim = "".join([str(x) for x in [search_name]])
+
         notify_user_status = False
 
         all_room_users = self.dynamo.user_dict(self.room_id)
@@ -463,6 +466,7 @@ class githandler:
             if assign_status == "assign":
                 issue.add_to_assignees(search_name)
                 message = f"{hyperlink_format} successfully assigned to " + name_sim
+
                 if notify_user_status:
                     direct_message = (
                         f"Hello {name_sim}, the following issue was just assigned to you: {hyperlink_format}," +
