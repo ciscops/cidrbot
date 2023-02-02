@@ -53,6 +53,9 @@ class cidrbot:
         self.roomID = ""
         self.WEBEX_MESSAGE_CHAR_LIMIT = 4700
 
+        #TODO Delete after testing
+        self.ADMIN_WEBEX_ROOM_ID = "68371f10-ed8c-11ec-825f-27cdc0dd8f69"
+
     def send_wbx_msg(self, room, message, pt_id):
         self.Api.messages.create(room, markdown=message, parentId=pt_id)
 
@@ -212,6 +215,10 @@ class cidrbot:
         if len(message) < self.WEBEX_MESSAGE_CHAR_LIMIT:
             return False
 
+        self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Overflow is true"
+        )
+
         split_message = message.split(split_keyword)
         message_first_part = ""
         msgs_to_be_sent = []
@@ -220,15 +227,24 @@ class cidrbot:
         message_first_part += issue_title
 
         for repo in split_message:
-            self.logging.debug("REPO: %s", str(repo))
+            self.logging.debug("Repo: %s", str(repo))
             self.logging.debug("Length of repo %s", len(repo))
+            self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Length of repo: " + len(repo)
+        )
             if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Appending message to old"
+        )
                 message_first_part += split_keyword
                 message_first_part += repo
                 continue
 
             split_repo = repo.split("\n")
             repo_name = split_repo.pop(0)
+            self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Repo " + str(repo_name) + "not able to be appended"
+        )
 
             #check to see if cannot append at least n lines to last message
             is_not_able_to_append = len(message_first_part) + len(
@@ -237,13 +253,20 @@ class cidrbot:
 
             #check see if entire repo fit in one message so don't waste memory and time splitting and repiecing
             if is_not_able_to_append and len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
+                self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="adding repo to message"
+        )
                 msgs_to_be_sent.append(message_first_part)
                 message_first_part += split_keyword + repo
                 continue
             if is_not_able_to_append:
+                self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="appending message to list"
+        )
                 msgs_to_be_sent.append(message_first_part)
                 message_first_part = ""
 
+            # means is able to append
             message_first_part += split_keyword + repo_name
             for repo_part in split_repo:
                 if len(message_first_part) + len(repo_part) < self.WEBEX_MESSAGE_CHAR_LIMIT:
@@ -253,6 +276,11 @@ class cidrbot:
                 #if end message, don't do split_keyword part
                 message_first_part = split_keyword + repo_name + " (continued)" + "\n" + repo_part
         msgs_to_be_sent.append(message_first_part)
+
+        for msg in msgs_to_be_sent:
+            self.webex_api.messages.create(
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown=msg
+        )
 
         return self.send_wbx_messages(msgs_to_be_sent, room_id, message_id, pt_id, request_type)
 
