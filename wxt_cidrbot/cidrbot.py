@@ -230,7 +230,7 @@ class cidrbot:
             self.logging.debug("Repo: %s", str(repo))
             self.logging.debug("Length of repo %s", len(repo))
             self.webex_api.messages.create(
-            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Length of repo: " + len(repo)
+            roomId=self.ADMIN_WEBEX_ROOM_ID, markdown="Length of repo: " + str(len(repo))
         )
             if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
                 self.webex_api.messages.create(
