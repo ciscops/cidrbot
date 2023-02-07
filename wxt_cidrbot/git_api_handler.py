@@ -98,7 +98,7 @@ class githandler:
         text = ""
         self.logging.debug(issue_type)
         if assigned_user is not None:
-            text += f" | **Assigned**: " + str(assigned_user) + "\n"
+            text += " | **Assigned**: " + str(assigned_user) + "\n"
             assigned_status = [True, str(assigned_user)]
         else:
             text += "\n"
@@ -252,7 +252,7 @@ class githandler:
         if request == "List":
             repo_list.sort(key=len)
             final_repo_order = ' '.join(repo_list)
-            final_repo_order += f"\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
+            final_repo_order += "\n \n Type **@Cidrbot help** for assigning options \n &#x1F7E2; < 2 days | &#128992; < 7 days | &#128308; > 7 days"
             self.logging.debug("Total msg len %s", len(start_text + final_repo_order))
             self.logging.debug("STOP TIME 1")
             return start_text + final_repo_order
@@ -339,7 +339,7 @@ class githandler:
             issue_number = text[2]
             repo = text[1]
         except Exception:
-            return f"Use Syntax: **@cidrbot (repo) (issue#) info**"
+            return "Use Syntax: **@cidrbot (repo) (issue#) info**"
 
         token_dict = self.dynamo.get_repo_keys(self.room_id, repo)
         token = token_dict[repo]
@@ -354,7 +354,7 @@ class githandler:
                 try:
                     issue = self.git_api.get_repo(repo).get_issue(int(issue_number))
                 except Exception:
-                    return f"Could not locate issue, Error: **invalid repo/issue combination**"
+                    return "Could not locate issue, Error: **invalid repo/issue combination**"
 
                 issue_json = issue.raw_data
                 if 'pull_request' not in issue_json:
@@ -396,7 +396,7 @@ class githandler:
                 Repo_url = f'<a href="{"https://github.com/" + repo}">{repo}</a>'
                 Comments = f'<a href="{issue.html_url}">{"Comments:"}</a>'
 
-                spacer = f"**|**"
+                spacer = "**|**"
 
                 line1 = f"Owner: {name_hyperlink}   {spacer}  {Repo_url}"
                 line2 = f"{assignee_text} {assigned_user}   {spacer}   {Comments} {issue.comments}   {spacer}   {hyperlink_commits} {commits}"
@@ -407,8 +407,8 @@ class githandler:
                     f"- {line3}  \n"
                 )
 
-            return f"Issue number invalid"
-        return f"Repo name invalid"
+            return "Issue number invalid"
+        return "Repo name invalid"
 
     # Ensure an issue/pr was assigned. If the username was invalid, this function returns false and the webex user is notified of an invalid username error
     def check_assigned_status(self, search_name, issue_type, repo, issue_number):
