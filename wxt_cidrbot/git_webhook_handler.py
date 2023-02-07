@@ -257,7 +257,9 @@ class gitwebhook:
                 user_to_assign = user['username']
                 self.logging.debug("Picking user with least issues: %s", user_to_assign)
 
-                git_user_info = requests.get('https://api.github.com/users/' + user_to_assign,  timeout=self.timeout_value)
+                git_user_info = requests.get(
+                    'https://api.github.com/users/' + user_to_assign, timeout=self.timeout_value
+                )
                 full_name = git_user_info.json()['name']
 
                 reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
