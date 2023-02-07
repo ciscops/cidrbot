@@ -133,7 +133,7 @@ class cidrbot:
                             message += text + '\n'
                         else:
                             message = (
-                                f"**Weekly reminder to review your issues**, " +
+                                "**Weekly reminder to review your issues**, " +
                                 f" -To disable these messages, type: **disable reminders** \n \n Room: {room_name} \n"
                             )
                             message += text + '\n'
