@@ -479,7 +479,7 @@ class dynamoapi:
         headers = {"Authorization": f"Bearer {encoded_key}", 'Accept': 'application/vnd.github.v3+json'}
         post_data = {}
 
-        response = requests.post(URL, json=post_data, headers=headers, timeout=self.timeout_value)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=self.timeout_value, verify=False)
         if response.status_code == 201:
             self.logging.debug("Refreshed key")
             resp = str(response.text)

@@ -200,7 +200,7 @@ class gitwebhook:
         URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
         post_message = {'roomId': room_id, 'markdown': message}
-        response = requests.post(URL, json=post_message, headers=headers, timeout=self.timeout_value)
+        response = requests.post(URL, json=post_message, headers=headers, timeout=self.timeout_value, verify=False)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             msg_edit_id = json.loads(str(response.text))["id"]
@@ -229,10 +229,10 @@ class gitwebhook:
             pr_query = f"state:open type:pr review-requested:{author}" + query_repo
             full_pr_url = "https://api.github.com/search/issues?q=" + pr_query
 
-            issue_search = session.get(full_issue_url, headers={})
+            issue_search = session.get(full_issue_url, headers={}, verify=False)
             issue_count = issue_search.json()['total_count']
 
-            pr_search = session.get(full_pr_url, headers={})
+            pr_search = session.get(full_pr_url, headers={}, verify=False)
             pr_count = pr_search.json()['total_count']
 
             issue_count_dict = {'issues': issue_count + pr_count, 'username': author}
@@ -258,7 +258,7 @@ class gitwebhook:
                 self.logging.debug("Picking user with least issues: %s", user_to_assign)
 
                 git_user_info = requests.get(
-                    'https://api.github.com/users/' + user_to_assign, timeout=self.timeout_value
+                    'https://api.github.com/users/' + user_to_assign, timeout=self.timeout_value, verify=False
                 )
                 full_name = git_user_info.json()['name']
 
@@ -394,7 +394,7 @@ class gitwebhook:
         required_approvals = self.dynamo.get_required_approvals(repo_name, room_id)
 
         pr_url = json_string['pull_request']['url']
-        pr_search = session.get(pr_url, headers=headers)
+        pr_search = session.get(pr_url, headers=headers, verify=False)
         pr_json = pr_search.json()
         pr_is_mergeable = bool(pr_json['mergeable'])
 
@@ -404,7 +404,7 @@ class gitwebhook:
 
         #checks-runs
         check_runs_url = f"https://api.github.com/repos/{repo_name}/commits/{branch_name}/check-runs"
-        check_runs_json = session.get(check_runs_url, headers=headers).json()
+        check_runs_json = session.get(check_runs_url, headers=headers, verify=False).json()
 
         passed_check_runs = True
         skipped_checks = 0
@@ -497,7 +497,7 @@ class gitwebhook:
         session = requests.Session()
         pr_url = json_string['pull_request']['url']
         pr_reviews_url = pr_url + "/reviews"
-        pr_reviews_search = session.get(pr_reviews_url, headers=headers)
+        pr_reviews_search = session.get(pr_reviews_url, headers=headers, verify=False)
         pr_reviews_json = pr_reviews_search.json()
 
         approved_reviewers = ""

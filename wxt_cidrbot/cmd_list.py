@@ -275,7 +275,7 @@ class cmdlist:
         URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
         post_message = {'roomId': room_id, 'markdown': text, 'parentId': pt_id}
-        response = requests.post(URL, json=post_message, headers=headers, timeout=60)
+        response = requests.post(URL, json=post_message, headers=headers, timeout=60, verify=False)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             self.logging.debug(str(response.text))

@@ -26,7 +26,7 @@ class webex_message:
 
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
         post_data = {'roomId': room_id, 'markdown': message}
-        response = requests.put(URL, json=post_data, headers=headers, timeout=60)
+        response = requests.put(URL, json=post_data, headers=headers, timeout=60, verify=False)
         if response.status_code == 200:
             self.logging.debug("Message updated successfully")
         else:
