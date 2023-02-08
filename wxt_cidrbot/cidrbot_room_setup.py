@@ -142,7 +142,7 @@ class room_setup:
         URL = 'https://webexapis.com/v1/webhooks'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        response = requests.post(URL, json=post_data, headers=headers, timeout=60, verify=False)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=60)
         if response.status_code == 200:
             self.logging.debug("Webhook created successfully")
             self.logging.debug(str(response.text))
@@ -157,7 +157,7 @@ class room_setup:
         URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        response = requests.post(URL, json=post_data, headers=headers, timeout=60, verify=False)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=60)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             self.logging.debug(str(response.text))

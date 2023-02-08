@@ -62,7 +62,7 @@ class githandler:
             if 'review_comments_url' in issue:
                 review_url = issue['url'] + "/reviews"
                 self.logging.debug(issue)
-                review = self.session.get(review_url, headers=self.headers, verify=False)
+                review = self.session.get(review_url, headers=self.headers)
                 self.logging.debug(review.json())
                 review_json = review.json()
 
@@ -203,10 +203,10 @@ class githandler:
             issue_num = 0
 
             all_issues = self.session.get(
-                'https://api.github.com/repos/' + repository + '/issues?state=open', headers=self.headers, verify=False
+                'https://api.github.com/repos/' + repository + '/issues?state=open', headers=self.headers
             )
             all_prs = self.session.get(
-                'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers, verify=False
+                'https://api.github.com/repos/' + repository + '/pulls?state=open', headers=self.headers
             )
 
             if all_prs.status_code != 200 or all_issues.status_code != 200:
@@ -269,7 +269,7 @@ class githandler:
     def check_github_user(self, name):
         self.session = requests.Session()
 
-        user = self.session.get('https://api.github.com/users/' + name, verify=False)
+        user = self.session.get('https://api.github.com/users/' + name)
 
         json_str = user.json()
 
@@ -286,7 +286,7 @@ class githandler:
             self.session = requests.Session()
             self.headers = {'Authorization': 'token ' + repo_token}
 
-            repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers, verify=False)
+            repo = self.session.get('https://api.github.com/repos/' + repo_name, headers=self.headers)
 
             json_str = repo.json()
 

@@ -1,4 +1,4 @@
-webexteamssdk==1.6
+webexteamssdk==1.6.1
 pygithub==1.55
 boto3==1.17.6
 requests==2.26.0
