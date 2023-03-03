@@ -86,18 +86,18 @@ class room_setup:
                             'person_id': person_id
                         })
 
-                text = f"Hello, thank you for adding cidrbot to your room, one moment while I set things up: \n - Setting up webhooks..."
+                text = "Hello, thank you for adding cidrbot to your room, one moment while I set things up: \n - Setting up webhooks..."
                 post_message = {'roomId': room_id, 'markdown': text}
 
                 message_id = self.post_message(post_message)
 
-                text += f"\n - Webhook setup complete"
+                text += "\n - Webhook setup complete"
                 self.webex.edit_message(message_id, text, room_id)
 
                 id_list = self.webex_webhook_setup(room_id)
                 self.dynamo.create_room(room_id, member_info, id_list)
 
-                text += f"\n - Room setup complete \n\n To begin type **@CIDRbot manage repos** \n For a list of commands type **@CIDRbot help**"
+                text += "\n - Room setup complete \n\n To begin type **@CIDRbot manage repos** \n For a list of commands type **@CIDRbot help**"
                 self.webex.edit_message(message_id, text, room_id)
 
     def webex_webhook_setup(self, room_id):
@@ -139,10 +139,10 @@ class room_setup:
         return id_list
 
     def post_webhook(self, post_data):
-        URL = f'https://webexapis.com/v1/webhooks'
+        URL = 'https://webexapis.com/v1/webhooks'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        response = requests.post(URL, json=post_data, headers=headers)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=60)
         if response.status_code == 200:
             self.logging.debug("Webhook created successfully")
             self.logging.debug(str(response.text))
@@ -154,10 +154,10 @@ class room_setup:
         return "no id"
 
     def post_message(self, post_data):
-        URL = f'https://webexapis.com/v1/messages'
+        URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        response = requests.post(URL, json=post_data, headers=headers)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=60)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             self.logging.debug(str(response.text))

@@ -62,6 +62,7 @@ class dynamoapi:
         self.reponame_schema = '#reponame'
         self.boto3_session = None
         self.boto3_client = None
+        self.timeout_value = 60
 
     def get_dynamo(self):
         """
@@ -406,7 +407,7 @@ class dynamoapi:
 
         #Updates token if need be and add dictionary entry with all repos for that token
         #repo_tokens = {repo1:token,repo2:token}
-        for installation_id in needed_installation_ids:
+        for installation_id, repos in needed_installation_ids.items():
             installation_response = self.installation_table.query(
                 KeyConditionExpression=Key('installation_id').eq(installation_id)
             )
@@ -417,7 +418,7 @@ class dynamoapi:
             else:
                 token = installation_data['access_token']
 
-            for repo in needed_installation_ids[installation_id]:
+            for repo in repos:
                 repo_tokens[repo] = token
 
         return repo_tokens
@@ -475,10 +476,10 @@ class dynamoapi:
 
     def git_refresh_token(self, installation_id, encoded_key):
         URL = f'https://api.github.com/app/installations/{installation_id}/access_tokens'
-        headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
+        headers = {"Authorization": f"Bearer {encoded_key}", 'Accept': 'application/vnd.github.v3+json'}
         post_data = {}
 
-        response = requests.post(URL, json=post_data, headers=headers)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=self.timeout_value)
         if response.status_code == 201:
             self.logging.debug("Refreshed key")
             resp = str(response.text)

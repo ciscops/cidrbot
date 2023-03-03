@@ -82,7 +82,7 @@ class cmdlist:
                 return self.dynamo.update_user(self.user_email, "off", self.user_person_id, room_id)
             if "help" in text:
                 return self.help_menu("all")
-            return f"List of avaliable commands in direct messages: \n - enable/disable reminders"
+            return "List of avaliable commands in direct messages: \n - enable/disable reminders"
 
         words_list = [
             'list', 'issues', 'me', 'my', 'all', 'help', 'repos', 'enable', 'disable', 'reminders', 'in', 'assign',
@@ -179,7 +179,7 @@ class cmdlist:
                 return self.send_update_msg(room_id, "repo unassigned", repos, None, pt_id)
 
         if " in " in text:
-            return f"Could not locate repo, type **@CIDRBot list repos** for a list of currently searchable repos"
+            return "Could not locate repo, type **@CIDRBot list repos** for a list of currently searchable repos"
 
         if self.similar(sim_text, "list all issues") > 0.9:
             return self.send_update_msg(room_id, "all", repo_names, None, pt_id)
@@ -241,7 +241,7 @@ class cmdlist:
                 return "That command is only avaliable for moderators in the chatroom"
 
         help_text = (
-            f"Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
+            "Type **@CIDRbot help** for a list of commands: Add any of the following strings for specific help \n" +
             "- **@CIDRbot help** + (assigning, issues, repos, reminders, syntax, triage, approvals) \n"
         )
         return help_text
@@ -257,9 +257,9 @@ class cmdlist:
         elif cmd_type == "issues-unassigned":
             text = "Retrieving a list of unassigned issues, one moment..."
         elif cmd_type == "user":
-            text = f"Retrieving issues, one moment..."
+            text = "Retrieving issues, one moment..."
         elif cmd_type == 'info':
-            text = f"Retrieving issue information..."
+            text = "Retrieving issue information..."
         elif cmd_type == 'triage add':
             text = f"Searching github for user {name} ..."
         elif cmd_type == 'triage remove':
@@ -267,15 +267,15 @@ class cmdlist:
         elif cmd_type == 'update name':
             text = f"Updating {name}'s github name reference..."
         elif cmd_type == 'change approvals':
-            text = f"Changing required approvals for specified repos..."
+            text = "Changing required approvals for specified repos..."
         else:
             display_name = name[0].split("/", 1)[1]
             text = f"Retrieving a list of issues in repo: {display_name}, one moment..."
 
-        URL = f'https://webexapis.com/v1/messages'
+        URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
         post_message = {'roomId': room_id, 'markdown': text, 'parentId': pt_id}
-        response = requests.post(URL, json=post_message, headers=headers)
+        response = requests.post(URL, json=post_message, headers=headers, timeout=60)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             self.logging.debug(str(response.text))
@@ -352,17 +352,17 @@ class cmdlist:
         user_list = ""
         name = name[0].upper() + name[1:]
 
-        for i in self.first_name_dups:
+        for i, x in self.first_name_dups.items():
             self.logging.debug(name)
-            self.logging.debug(self.first_name_dups[i]['first_name'])
-            if self.first_name_dups[i]['first_name'] == name.lower():
+            self.logging.debug(x['first_name'])
+            if x['first_name'] == name.lower():
                 login_list += "(" + i + ")"
             else:
                 user_list += "(" + i + ")"
 
         if login_list != "":
-            return f"Multiple users exist with the name **" + name + "**; please use one of the following names instead: **" + login_list + "**"
-        return f"Try using one of the following names: **" + user_list + "**"
+            return "Multiple users exist with the name **" + name + "**; please use one of the following names instead: **" + login_list + "**"
+        return "Try using one of the following names: **" + user_list + "**"
 
     def message_similarity(self, text_split, word_list, msg_threshold):
         likely_words = []
@@ -411,7 +411,7 @@ class cmdlist:
         else:
             first_name = git_name
 
-        for user in self.username_email_dict:
+        for user, _ in self.username_email_dict:
             if git_name in (user, self.username_email_dict[user]['login']):
                 first_name = user[0].upper() + user[1:]
                 git_name = self.username_email_dict[user]['git_name']
@@ -439,7 +439,7 @@ class cmdlist:
         room = self.Api.rooms.get(room_id)
         room_name = room.title
 
-        return f"Welcome to **" + room_name + f"**, {name_format}, type *@CIDRbot help* for a list of commands I support\n"
+        return "Welcome to **" + room_name + f"**, {name_format}, type *@CIDRbot help* for a list of commands I support\n"
 
     # Create a list of all users, their first name, their username minus the @ email tag
     # Create a secondary list for duplicate users. These lists are used when the bot processes the name in a message
@@ -458,17 +458,17 @@ class cmdlist:
         except Exception:
             return "Specified username invalid"
 
-        for user in self.username_email_dict:
-            if self.username_email_dict[user]['login'] == target_user:
+        for user, x in self.username_email_dict.items():
+            if x['login'] == target_user:
                 target_user = user[0].upper() + user[1:]
 
-        edit_message = f"Retrieving issues, one moment... \n "
-        self.webex.edit_message(self.msg_id, edit_message + f"- Searching all issues \n", self.room_of_msg)
+        edit_message = "Retrieving issues, one moment... \n "
+        self.webex.edit_message(self.msg_id, edit_message + "- Searching all issues \n", self.room_of_msg)
 
         issue_dict = self.git_handle.scan_repos("Dict", 'All', self.dynamo.get_repositories(room_id), False)
         self.logging.debug(issue_dict)
 
-        message = f"**Issues assigned to** **" + str(target_user) + "**\n"
+        message = "**Issues assigned to** **" + str(target_user) + "**\n"
         issues_found = 0
         for issue in issue_dict:
             repo_name = issue.split(', ', 1)[0]
@@ -545,13 +545,13 @@ class cmdlist:
 
     # A list of helpful messages to aid users in interacting with cidrbot
     def help_menu(self, help_type):
-        start_text = f"Here is a list of current commands and features (Note: excluding reminder toggling, no other commands are accessible in direct messages with cidrbot)\n" + "\n"
+        start_text = "Here is a list of current commands and features (Note: excluding reminder toggling, no other commands are accessible in direct messages with cidrbot)\n" + "\n"
 
         #url_name = ''
         #url = ''
         #hyperlink_format = f'<a href="{url}">{url_name}</a>'
         end_text = (
-            f"\n-For further documentation and proper message syntax, see README\n" +
+            "\n-For further documentation and proper message syntax, see README\n" +
             "-To access all of these commands in direct messages, omit **@cidrbot**\n"
         )
 
@@ -564,27 +564,27 @@ class cmdlist:
             "- **@Cidrbot (repo name) (issue number) info** (@Cidrbot repopath/reponame 20 info) \n" + "\n"
         )
         assign_issues_help = (
-            f"-Assign/Unassign issue: **@Cidrbot (assign/unassign) (repo) (issue_num) (me, Git username, Webex firstname)**\n"
+            "-Assign/Unassign issue: **@Cidrbot (assign/unassign) (repo) (issue_num) (me, Git username, Webex firstname)**\n"
             + "- **@Cidrbot assign/unassign (repo) (issue_num) (me)**\n" +
             "- **@Cidrbot assign/unassign (repo) (issue_num) (Git username)**\n" +
             "- **@Cidrbot assign/unassign (repo) (issue_num) (Webex firstname)**\n" + "\n"
         )
         syntax_help = (
-            f"-Syntax examples:\n" + "- Github username: **ppajersk**  \n" + "- Webex firstname: **Paul**  \n" +
+            "-Syntax examples:\n" + "- Github username: **ppajersk**  \n" + "- Webex firstname: **Paul**  \n" +
             "- Repo: **ciscops/cidrbot**  \n" + "\n"
         )
         reminders_help = (
-            f"-Enable/Disable weekly issue reminders & issue assigning notification\n" +
+            "-Enable/Disable weekly issue reminders & issue assigning notification\n" +
             "- **Avaliable only in direct messages with cidrbot  - DM: (Enable/Disable) reminders** \n" + "\n"
         )
         repos_help = (
-            f"-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
+            "-Display current repo list:\n" + "- **@Cidrbot list repos**\n" +
             "- **@Cidrbot auth repos** - authorize an installation\n" +
             "- **@Cidrbot configure repos** - add/remove repos for an active installation\n" + "\n"
         )
 
         triage_help = (
-            f"-Display current triage list:\n" + "- **@Cidrbot list triage users**\n" +
+            "-Display current triage list:\n" + "- **@Cidrbot list triage users**\n" +
             "- Add or remove triage users (Username has to be the **exact** github username)\n" +
             "- Only github users who are able to be assigned to an issue/pr can be assigned by cidrbot\n" +
             "- **@Cidrbot triage add username** - only for moderators in chat room\n" +
@@ -592,7 +592,7 @@ class cmdlist:
         )
 
         required_approvals_help = (
-            f"-Change required approvals number:\n" +
+            "-Change required approvals number:\n" +
             "- Change required approvals (repo name has to be the **exact** github repo path + name)\n" +
             "- **@Cidrbot change required approvals (n) (repo)** - only for moderators in chat room\n" +
             "- **@Cidrbot change required approvals (n) (repo1) (repo2)** - supports batch updates\n" +
@@ -600,7 +600,7 @@ class cmdlist:
         )
 
         syntax_end_text = (
-            f"- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"
+            "- Syntax: Github username: **ppajersk**, Webex firstname: **Paul**, Repo: **ciscops/cidrbot**  \n"
         )
 
         if help_type == "all":

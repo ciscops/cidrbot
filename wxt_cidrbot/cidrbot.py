@@ -130,7 +130,7 @@ class cidrbot:
                             message += text + '\n'
                         else:
                             message = (
-                                f"**Weekly reminder to review your issues**, " +
+                                "**Weekly reminder to review your issues**, " +
                                 f" -To disable these messages, type: **disable reminders** \n \n Room: {room_name} \n"
                             )
                             message += text + '\n'
@@ -220,8 +220,9 @@ class cidrbot:
         message_first_part += issue_title
 
         for repo in split_message:
-            self.logging.debug("REPO: %s", str(repo))
+            self.logging.debug("Repo: %s", str(repo))
             self.logging.debug("Length of repo %s", len(repo))
+
             if len(message_first_part) + len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
                 message_first_part += split_keyword
                 message_first_part += repo
@@ -238,12 +239,13 @@ class cidrbot:
             #check see if entire repo fit in one message so don't waste memory and time splitting and repiecing
             if is_not_able_to_append and len(repo) < self.WEBEX_MESSAGE_CHAR_LIMIT:
                 msgs_to_be_sent.append(message_first_part)
-                message_first_part += split_keyword + repo
+                message_first_part = split_keyword + repo
                 continue
             if is_not_able_to_append:
                 msgs_to_be_sent.append(message_first_part)
                 message_first_part = ""
 
+            # means is able to append
             message_first_part += split_keyword + repo_name
             for repo_part in split_repo:
                 if len(message_first_part) + len(repo_part) < self.WEBEX_MESSAGE_CHAR_LIMIT:

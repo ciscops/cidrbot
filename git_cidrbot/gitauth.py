@@ -94,6 +94,7 @@ class gitauth:
         self.table = ''
         self.Api = WebexTeamsAPI()
         self.private_key = ''
+        self.timeout_value = 60
 
     def get_git_key(self):
         session = boto3.session.Session()
@@ -132,11 +133,11 @@ class gitauth:
                         },
                         "body":
                         json.dumps({
-                            f"User authenticated app without using webex auth flow":
+                            "User authenticated app without using webex auth flow":
                             "Please uninstall app (Uninstall cidrbot) then follow this process: " +
-                            f" 1) Invite the bot to a secure webex teams room " + f" 2) Type @CIDRbot add repo " +
-                            f" 3) Complete the auth process by clicking the link the bot messages you " +
-                            f" 4) You will receive a message in both the room and direct messages that the bot authed successfully. REDIRECTING IN 15 SECONDS"
+                            " 1) Invite the bot to a secure webex teams room " + " 2) Type @CIDRbot add repo " +
+                            " 3) Complete the auth process by clicking the link the bot messages you " +
+                            " 4) You will receive a message in both the room and direct messages that the bot authed successfully. REDIRECTING IN 15 SECONDS"
                         })
                     }
 
@@ -166,7 +167,7 @@ class gitauth:
 
                         expire_date = int(time.time()) + 3600
 
-                        repo_info = self.git_repo_info(token, f'https://api.github.com/installation/repositories')
+                        repo_info = self.git_repo_info(token, 'https://api.github.com/installation/repositories')
                         user_info = self.git_user_info(
                             encoded_key, f'https://api.github.com/app/installations/{install_id}'
                         )
@@ -193,7 +194,7 @@ class gitauth:
 
                         text_direct = f"Authentication successful, the following repos are added to room: {room_name} \n" + repo_list
                         text = (
-                            f"Authentication successful, type @CIDRbot help to begin. To add repos, please" +
+                            "Authentication successful, type @CIDRbot help to begin. To add repos, please" +
                             ''' visit <a href="https://github.com/settings/installations/">Github applications</a> and click "configure" for the cidrbot app '''
                         )
 
@@ -221,7 +222,7 @@ class gitauth:
                         },
                         "body":
                         json.dumps({
-                            f"Expired link was used":
+                            "Expired link was used":
                             "Please uninstall cidrbot app and follow the process " +
                             "described by the page you will be redirected to. REDIRECTING IN 15 SECONDS"
                         })
@@ -251,10 +252,10 @@ class gitauth:
         return None
 
     def git_user_info(self, encoded_key, URL):
-        headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
+        headers = {"Authorization": f"Bearer {encoded_key}", 'Accept': 'application/vnd.github.v3+json'}
         post_data = {}
 
-        response = requests.get(URL, json=post_data, headers=headers)
+        response = requests.get(URL, json=post_data, headers=headers, timeout=self.timeout_value)
         if response.status_code == 200:
             self.logging.debug("User info granted")
             resp = str(response.text)
@@ -265,10 +266,10 @@ class gitauth:
         return None
 
     def send_webex_message(self, post_data):
-        URL = f'https://webexapis.com/v1/messages'
+        URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
 
-        requests.post(URL, json=post_data, headers=headers)
+        requests.post(URL, json=post_data, headers=headers, timeout=self.timeout_value)
 
     def add_installation(self, user_id, install_id, person_id, user_name, room_id, token, repo_path_list, expire_date):
         self.dynamodb = boto3.resource('dynamodb')
@@ -335,10 +336,10 @@ class gitauth:
 
     def create_token(self, installation_id, encoded_key):
         URL = f'https://api.github.com/app/installations/{installation_id}/access_tokens'
-        headers = {"Authorization": "Bearer {}".format(encoded_key), 'Accept': 'application/vnd.github.v3+json'}
+        headers = {"Authorization": f"Bearer {encoded_key}", 'Accept': 'application/vnd.github.v3+json'}
         post_data = {}
 
-        response = requests.post(URL, json=post_data, headers=headers)
+        response = requests.post(URL, json=post_data, headers=headers, timeout=self.timeout_value)
         if response.status_code == 201:
             self.logging.debug("Access key granted")
             resp = str(response.text)

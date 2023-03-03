@@ -50,6 +50,7 @@ class gitwebhook:
         self.table = ''
         self.room_id = ''
         self.EMOJIS = {'RED_X': '&#10060;', 'GREEN_CHECK': '&#9989;'}
+        self.timeout_value = 60
 
     def webhook_request(self, event):
         json_string = json.loads((event["body"]))
@@ -78,13 +79,13 @@ class gitwebhook:
             for repo_added in json_string['repositories_added']:
                 if len(repo_added) > 0:
                     repo = repo_added['full_name']
-                    message_add_repo += f" - " + repo + "\n"
+                    message_add_repo += " - " + repo + "\n"
                     self.dynamo.edit_repo(room_id, repo, installation_id, "add")
 
             for repo_removed in json_string['repositories_removed']:
                 if len(repo_removed) > 0:
                     repo = repo_removed['full_name']
-                    message_remove_repo += f" - " + repo + "\n"
+                    message_remove_repo += " - " + repo + "\n"
                     self.dynamo.edit_repo(room_id, repo, installation_id, "remove")
 
             room = self.Api.rooms.get(room_id)
@@ -93,9 +94,9 @@ class gitwebhook:
             message = f"Repos updated for room: {room_name} \n"
 
             if len(message_add_repo) > 0:
-                message += f"**Added:**\n" + message_add_repo
+                message += "**Added:**\n" + message_add_repo
             if len(message_remove_repo) > 0:
-                message += f"**Removed:**\n" + message_remove_repo
+                message += "**Removed:**\n" + message_remove_repo
 
             person_id = self.dynamo.get_webex_username(github_name, room_id)
 
@@ -110,7 +111,7 @@ class gitwebhook:
 
             if len(removed_repos) > 0:
                 for repo in removed_repos:
-                    message_uninstall += f" - " + repo + "\n"
+                    message_uninstall += " - " + repo + "\n"
                 self.Api.messages.create(self.room_id, markdown=message_uninstall)
 
         elif x_event_type in ('issues', 'pull_request'):
@@ -190,16 +191,16 @@ class gitwebhook:
             self.logging.debug("No triage users, sending update message and quitting")
             empty_triage_message = (
                 f"{issue_type} {hyperlink_format} {pull_request_action_msg} {hyperlink_format_repo} by {issue_user}. \n"
-                + f"- To assign this issue, use the following \n" +
+                + "- To assign this issue, use the following \n" +
                 f"- **@Cidrbot assign {repo_name} {issue_num} me|Git username|Webex firstname**"
             )
             self.Api.messages.create(room_id, markdown=empty_triage_message)
             return
 
-        URL = f'https://webexapis.com/v1/messages'
+        URL = 'https://webexapis.com/v1/messages'
         headers = {'Authorization': 'Bearer ' + self.wxt_access_token, 'Content-type': 'application/json;charset=utf-8'}
         post_message = {'roomId': room_id, 'markdown': message}
-        response = requests.post(URL, json=post_message, headers=headers)
+        response = requests.post(URL, json=post_message, headers=headers, timeout=self.timeout_value)
         if response.status_code == 200:
             self.logging.debug("Message created successfully")
             msg_edit_id = json.loads(str(response.text))["id"]
@@ -223,10 +224,10 @@ class gitwebhook:
         for author in author_list:
             self.logging.debug("Checking issue count for Author: %s", author)
             issue_query = f"state:open type:issue assignee:{author}" + query_repo
-            full_issue_url = f"https://api.github.com/search/issues?q=" + issue_query
+            full_issue_url = "https://api.github.com/search/issues?q=" + issue_query
 
             pr_query = f"state:open type:pr review-requested:{author}" + query_repo
-            full_pr_url = f"https://api.github.com/search/issues?q=" + pr_query
+            full_pr_url = "https://api.github.com/search/issues?q=" + pr_query
 
             issue_search = session.get(full_issue_url, headers={})
             issue_count = issue_search.json()['total_count']
@@ -256,7 +257,9 @@ class gitwebhook:
                 user_to_assign = user['username']
                 self.logging.debug("Picking user with least issues: %s", user_to_assign)
 
-                git_user_info = requests.get('https://api.github.com/users/' + user_to_assign)
+                git_user_info = requests.get(
+                    'https://api.github.com/users/' + user_to_assign, timeout=self.timeout_value
+                )
                 full_name = git_user_info.json()['name']
 
                 reply_message = self.git_handle.git_assign(repo_name, issue_num, user_to_assign, 'assign', full_name)
