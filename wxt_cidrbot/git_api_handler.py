@@ -427,7 +427,7 @@ class githandler:
         return False
 
     # Assign the issue to the user, additionally, if their notifications are enabled, send them a message
-    def git_assign(self, repo, issue_number, search_name, assign_status, name_sim):
+    def git_assign(self, repo, issue_number, search_name, assign_status, name_sim=None):
         try:
             token_dict = self.dynamo.get_repo_keys(self.room_id, repo)
             token = token_dict[repo]
@@ -440,6 +440,9 @@ class githandler:
 
         if self.check_github_user(search_name) is False:
             return f"Invalid username: {search_name}"
+
+        if name_sim is None:
+            name_sim = search_name
 
         notify_user_status = False
 
@@ -458,7 +461,15 @@ class githandler:
 
         issue_json = issue.raw_data
         hyperlink_format = f'<a href="{issue.html_url}">{issue.title}</a>'
+        return self.create_reviewer(
+            issue_json, issue, issue_number, assign_status, hyperlink_format, name_sim, search_name, user_id,
+            notify_user_status, repo
+        )
 
+    def create_reviewer(
+        self, issue_json, issue, issue_number, assign_status, hyperlink_format, name_sim, search_name, user_id,
+        notify_user_status, repo
+    ):
         if 'pull_request' not in issue_json:
             if assign_status == "assign":
                 issue.add_to_assignees(search_name)
